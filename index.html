@@ -75,6 +75,7 @@
   .section-tag::after { content:""; flex:1; height:1px; background: var(--line); }
 
   /* fuel mix donut + legend */
+  .gentop { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; margin-top: 6px; }
   .mix { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: center; }
   .donut-wrap { position: relative; width: 200px; height: 200px; }
   .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
@@ -133,7 +134,7 @@
 
   @media (max-width: 880px) {
     .hero { grid-template-columns: repeat(2, 1fr); }
-    .cols-2, .cols-2b { grid-template-columns: 1fr; }
+    .cols-2, .cols-2b, .gentop { grid-template-columns: 1fr; }
     .mix { grid-template-columns: 1fr; justify-items: center; }
   }
   @media (max-width: 480px) {
@@ -300,26 +301,37 @@ function render(D, B, Pk){
 
   const mixCard = el("div","card");
   const mixHead = el("div"); mixHead.style.cssText="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap";
-  mixHead.append(h2("Statewide generation mix", "Power generated across New York State right now, by fuel — totals "+fmt(total)+" MW. NYISO reports fuel mix statewide, not per zone."));
+  mixHead.append(h2("Statewide generation mix", "Power generated across New York State right now (left) and through the day (right), by fuel — totals "+fmt(total)+" MW. NYISO reports fuel mix statewide, not per zone."));
   const toggle = el("div","toggle");
   const bToday = el("button"); bToday.textContent="As generated"; bToday.className="active";
   const bIP = el("button"); bIP.textContent="If Indian Point ran";
   toggle.append(bToday, bIP); mixHead.append(toggle);
   mixCard.append(mixHead);
+
+  // top: donut+legend (left) and through-the-day chart (right), balanced heights
+  const topGrid = el("div","gentop");
   const mixBody = el("div");
+  const dayCol = el("div");
+  dayCol.append(h4mini("Through the day (since midnight, hover for detail)"));
+  dayCol.append(stackedArea(D.fuelMix));
+  topGrid.append(mixBody, dayCol);
+  mixCard.append(topGrid);
+
+  // full-width below both columns
+  const splitBox = el("div");
   const ipNote = el("div","ipnote"); ipNote.style.display="none";
-  mixCard.append(mixBody, ipNote);
+  mixCard.append(splitBox, ipNote);
 
   const actualStats = mixStats(L.fuelCats, D.co2FactorsLbsPerMWh, CLEAN);
   function drawMix(withIP){
-    mixBody.innerHTML="";
+    mixBody.innerHTML=""; splitBox.innerHTML="";
     const cats = withIP ? withIndianPoint(L.fuelCats) : L.fuelCats;
     const st = mixStats(cats, D.co2FactorsLbsPerMWh, CLEAN);
     const ord = FUEL_ORDER.filter(f=>cats[f]!=null && cats[f]>0).map(f=>({name:f, mw:cats[f], pct:cats[f]/st.total*100}));
     const mix = el("div","mix");
     mix.append(donut(ord, st.total, st.cleanPct), legend(ord, st.total));
     mixBody.append(mix);
-    const split = el("div"); split.style.marginTop="18px";
+    const split = el("div"); split.style.marginTop="20px";
     split.append(h4mini("Carbon-free vs fossil generation"));
     const sb = el("div","splitbar");
     const cleanDiv = el("div"); cleanDiv.style.width=(st.cleanMW/st.total*100)+"%"; cleanDiv.style.background=cssVar("--green"); cleanDiv.textContent=fmt(st.cleanPct,0)+"% carbon-free";
@@ -327,7 +339,7 @@ function render(D, B, Pk){
     sb.append(cleanDiv, fosDiv); split.append(sb);
     const sn = el("div"); sn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:8px";
     sn.innerHTML = "Carbon-free = nuclear + hydro + wind + other renewables ("+fmt(st.cleanMW)+" MW). Fossil = natural gas + dual-fuel + other fossil fuels ("+fmt(st.fossilMW)+" MW).";
-    split.append(sn); mixBody.append(split);
+    split.append(sn); splitBox.append(split);
     if(withIP){
       ipNote.style.display="";
       ipNote.innerHTML = "<b>Illustrative — Indian Point retired 2020–2021.</b> The Indian Point nuclear plant near New York City (Unit 2 ~1,020 MW, retired April 30 2020; Unit 3 ~1,040 MW, retired April 30 2021; ~2,060 MW net total, per the U.S. Energy Information Administration) ran around the clock as baseload. Restoring its output and displacing an equal amount of fossil generation would lift the statewide carbon-free share from <b>"+fmt(actualStats.cleanPct,1)+"%</b> to <b>"+fmt(st.cleanPct,1)+"%</b> and cut the grid's carbon intensity from <b>"+fmt(actualStats.co2Rate,0)+"</b> to <b>"+fmt(st.co2Rate,0)+"</b> lbs CO₂/MWh right now. This shows the scale of the lost carbon-free supply; the real grid would have dispatched other plants differently.";
@@ -342,14 +354,7 @@ function render(D, B, Pk){
   const clcpa = el("div"); clcpa.style.cssText="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.25);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:16px";
   clcpa.innerHTML = "<b style='color:var(--green)'>State climate law.</b> New York's Climate Leadership and Community Protection Act (2019) requires 70% of electricity from <b>renewable</b> sources by 2030 and a 100% <b>zero-emission</b> grid by 2040. The 70% goal counts renewables only — wind, solar and hydro, about "+fmt(renPct,0)+"% of statewide generation right now — while the carbon-free share above also includes nuclear. In 2024 state regulators signaled the 2030 renewable target is likely to slip.";
   mixCard.append(clcpa);
-
-  // stacked area of fuel mix over the day
-  const areaCard = el("div","card");
-  areaCard.append(h2("Generation mix through the day", "Stacked output by fuel since midnight, 5-minute resolution. Hover for the breakdown at any moment."));
-  areaCard.append(stackedArea(D.fuelMix));
-
-  const g1 = el("div","grid cols-2"); g1.append(mixCard, areaCard);
-  document.getElementById("root").append(g1);
+  document.getElementById("root").append(mixCard);
 
   // ================= WHAT NYC IS CONSUMING =================
   document.getElementById("root").append(sectionTag("What New York City is consuming"));
