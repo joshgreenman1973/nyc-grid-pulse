@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>NYC Grid Pulse — New York City's electricity in real time</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --bg: #0a0e16;
@@ -144,6 +146,18 @@
   .toggle button.active { background: var(--panel2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
   .ipnote { background: rgba(167,139,250,.08); border:1px solid rgba(167,139,250,.28); border-radius:10px; padding:11px 13px; font-size:12.5px; color:var(--muted); margin-top:16px; }
   .ipnote b { color: var(--purple); }
+
+  #peakerMap { height: 360px; border-radius: 12px; border:1px solid var(--line); margin-top:4px; background: var(--bg2); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #05080f; color: var(--text); border:1px solid var(--line); }
+  .leaflet-popup-content { font-family: var(--sans); font-size: 12.5px; margin: 10px 12px; }
+  .leaflet-popup-content b { color: var(--amber); }
+  .leaflet-container { font-family: var(--sans); }
+  .plist { width:100%; border-collapse:collapse; font-size:13px; margin-top:14px; }
+  .plist th { text-align:left; color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.5px; padding:6px 8px; border-bottom:1px solid var(--line); }
+  .plist td { padding:6px 8px; border-bottom:1px solid var(--line); }
+  .plist td.n { font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums; }
+  .plist .fuel-oil { color: var(--red); }
+  .plist .fuel-gas { color: var(--orange); }
 </style>
 </head>
 <body>
@@ -225,10 +239,11 @@ function load(){
   const bust = "?_=" + Date.now();
   Promise.all([
     fetch("data/latest.json" + bust).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); }),
-    // baseline.json is built on a slower schedule; treat it as optional
+    // baseline.json and peakers.json are built on slower schedules; treat as optional
     fetch("data/baseline.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch("data/peakers.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
   ])
-    .then(([D, B]) => { document.getElementById("root").innerHTML=""; render(D, B); })
+    .then(([D, B, Pk]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk); })
     .catch(e => {
       document.getElementById("root").innerHTML =
         '<div class="err">Could not load grid data ('+e.message+'). The snapshot file <code>data/latest.json</code> may not have been generated yet. Run <code>node fetch-data.mjs</code>.</div>';
@@ -238,7 +253,7 @@ load();
 // re-pull the snapshot every 5 minutes so an open tab stays current
 setInterval(load, 5 * 60 * 1000);
 
-function render(D, B){
+function render(D, B, Pk){
   const L = D.latest;
   // ---------- updated line ----------
   const ageMin = Math.max(0, Math.round((Date.now() - new Date(D.generatedAt)) / 60000));
@@ -484,6 +499,69 @@ function render(D, B){
   );
   co2Card.append(cmini);
   document.getElementById("root").append(co2Card);
+
+  // ================= PEAKER PLANTS =================
+  if(Pk && Pk.plants?.length){
+    document.getElementById("root").append(sectionTag("Peaking power plants"));
+    const pk = el("div","card");
+    pk.append(h2("Where New York City's peaker plants are",
+      Pk.totalPlants+" grid-serving peaking plants operate inside the five boroughs, totaling "+fmt(Pk.totalNetSummerMW)+" MW of net summer capacity. These are simple-cycle combustion turbines and engines that switch on mainly during high demand — like this week's heat. Sized by capacity; red burns oil or kerosene, orange burns natural gas."));
+    const mapDiv = el("div"); mapDiv.id="peakerMap"; pk.append(mapDiv);
+
+    // located list (always rendered — the verifiable core, and a fallback if the map can't load)
+    const tbl = el("table","plist");
+    tbl.innerHTML = "<tr><th>Plant</th><th>Borough</th><th>Net summer</th><th>Fuel</th><th>Online</th></tr>";
+    for(const p of Pk.plants){
+      const oil = p.fuels.some(f=>/oil|kerosene|jet/.test(f));
+      const tr = el("tr");
+      tr.innerHTML = "<td>"+p.plant+"</td><td>"+p.borough+"</td><td class='n'>"+fmt(p.netSummerMW)+" MW</td>"+
+        "<td class='"+(oil?"fuel-oil":"fuel-gas")+"'>"+p.fuels.join(", ")+"</td><td class='n'>"+(p.minYear||"—")+"</td>";
+      tbl.append(tr);
+    }
+    pk.append(tbl);
+
+    // real-time category-level "fossil swing supply" — honest proxy for peaking activity
+    const cats = L.fuelCats || {};
+    const dispatchable = (cats["Dual Fuel"]||0) + (cats["Natural Gas"]||0) + (cats["Other Fossil Fuels"]||0);
+    const oilNow = cats["Other Fossil Fuels"]||0;
+    const oilMaxToday = Math.max(0, ...D.fuelMix.map(f=>f.cats["Other Fossil Fuels"]||0));
+    const swingHead = el("div"); swingHead.style.cssText="margin-top:22px"; swingHead.append(h4mini("Dispatchable fossil generation right now (statewide)"));
+    pk.append(swingHead);
+    const sflex = el("div","miniflex");
+    sflex.append(
+      mini("Gas + dual-fuel + oil", fmt(dispatchable)+" MW"),
+      mini("Oil-fired now", fmt(oilNow)+" MW"),
+      mini("Oil-fired peak today", fmt(oilMaxToday)+" MW")
+    );
+    pk.append(sflex);
+    const pn = el("div"); pn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
+    pn.innerHTML = "When demand climbs, the grid leans on dispatchable fossil generation — and oil-fired output (NYISO's \"other fossil fuels\") is the last resort, appearing mainly under stress. <b>Important:</b> NYISO reports this by fuel category statewide and does not publish unit-level output, so these megawatts cannot be attributed to the specific plants mapped above. The map and list are verified locations (U.S. EIA); the real-time figures are the closest public signal of peaking activity, not a plant-by-plant readout.";
+    pk.append(pn);
+
+    const src = el("div"); src.style.cssText="color:var(--faint);font-size:12px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px";
+    src.innerHTML = "Source: "+Pk.source+". Definition: "+Pk.definition;
+    pk.append(src);
+    document.getElementById("root").append(pk);
+
+    // init Leaflet map (LL = Leaflet global; the local `L` here is D.latest). Graceful if the library failed to load.
+    const LL = window.L;
+    if(LL && LL.map){
+      try {
+        const map = LL.map("peakerMap", { scrollWheelZoom:false }).setView([40.715,-73.95], 11);
+        LL.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+          { attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:"abcd", maxZoom:18 }).addTo(map);
+        Pk.plants.forEach(p=>{
+          if(p.lat==null||p.lon==null) return;
+          const oil = p.fuels.some(f=>/oil|kerosene|jet/.test(f));
+          const r = Math.max(5, Math.sqrt(p.netSummerMW)*0.95);
+          LL.circleMarker([p.lat,p.lon], { radius:r, color:"#05080f", weight:1, fillColor: oil?"#f97362":"#fb923c", fillOpacity:0.78 })
+            .addTo(map)
+            .bindPopup("<b>"+p.plant+"</b><br>"+p.borough+" · online "+(p.minYear||"?")+"<br>"+fmt(p.netSummerMW)+" MW net · "+p.fuels.join(", ")+"<br>"+p.primeMovers.join("/")+" (simple-cycle)");
+        });
+        setTimeout(()=>map.invalidateSize(), 100);
+      } catch(e){ document.getElementById("peakerMap").style.display="none"; }
+    } else { document.getElementById("peakerMap").style.display="none"; }
+  }
 
   buildMethod(D);
 }
@@ -782,6 +860,9 @@ function buildMethod(D){
 
     <h4>Indian Point toggle (illustrative)</h4>
     <p>The "if Indian Point ran" toggle on the generation mix is a counterfactual, clearly labeled as such. It adds 2,060 MW of nuclear — the net summer capacity of the retired Indian Point Energy Center (Unit 2 ~1,020 MW, retired April 30, 2020; Unit 3 ~1,040 MW, retired April 30, 2021, per the U.S. Energy Information Administration) — and removes an equal amount of fossil generation proportionally across natural gas, dual-fuel and other fossil fuels, holding total generation equal to demand. Nuclear plants run as baseload near full output around the clock, so adding the full capacity is a reasonable illustration of scale. It is <i>not</i> a precise simulation: in reality the market would have dispatched plants differently, and prices and interchange would differ. Capacity and dates are verified facts; the displacement is the stated assumption.</p>
+
+    <h4>Peaker plants</h4>
+    <p>Plant locations come from U.S. EIA Form 860M, the federal inventory of every operating generator (with coordinates, prime mover, capacity and sector). We count a plant as a New York City peaker if it sits in the five boroughs, its prime mover is a simple-cycle combustion turbine (GT) or internal-combustion engine (IC), and it is in the Electric Utility or merchant IPP sector. That last filter deliberately excludes the many hospital, university and commercial backup/cogeneration engines EIA also lists, which are not grid peaking plants. NYISO does not publish unit-level real-time output, so the dashboard cannot show which individual plants are running at a given moment; the "dispatchable fossil generation" figures are statewide fuel-category totals from the live feed, shown as the closest public proxy for peaking activity.</p>
 
     <h4>Historical comparison ("a normal day")</h4>
     <p>The "how today compares" chart uses NYISO's archived <code>pal</code> files, which are byte-identical to the live feed. The shaded band is the 10th–90th percentile of New York City load for every <b>weekday</b> of the current month so far (today excluded), computed per 5-minute slot; the dashed line is the median. Weekday-only because weekend load is structurally lower. Each archived reading is bucketed to its 5-minute slot and averaged within the day so all days align to a 288-slot grid. Prior-year lines are the same calendar date in earlier years, pulled from NYISO's monthly archive ZIPs. Year-to-year and day-to-day swings are driven mostly by weather, not a trend.</p>
