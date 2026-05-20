@@ -365,6 +365,22 @@ function render(D, B, Pk, GC){
   const clcpa = el("div"); clcpa.style.cssText="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.25);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:16px";
   clcpa.innerHTML = "<b style='color:var(--green)'>State climate law.</b> New York's Climate Leadership and Community Protection Act (2019) requires 70% of electricity from <b>renewable</b> sources by 2030 and a 100% <b>zero-emission</b> grid by 2040. The 70% goal counts renewables only — wind, solar and hydro, about "+fmt(renPct,0)+"% of statewide generation right now — while the carbon-free share above also includes nuclear. In 2024 state regulators signaled the 2030 renewable target is likely to slip.";
   mixCard.append(clcpa);
+
+  // What's generated inside NYC itself (statewide mix is misleading for the city)
+  if(GC && GC.nycInCity){
+    const ic = GC.nycInCity;
+    const nucNow = total ? (L.fuelCats["Nuclear"]||0)/total*100 : 0;
+    const inCity = el("div"); inCity.style.cssText="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:12px";
+    const sb = el("div","splitbar"); sb.style.margin="9px 0 4px";
+    const gd = el("div"); gd.style.width=ic.gasPct+"%"; gd.style.background=cssVar("--orange"); gd.style.color="#1a1206"; gd.textContent=ic.gasPct+"% natural gas";
+    const od = el("div"); od.style.width=(100-ic.gasPct)+"%"; od.style.background=cssVar("--line");
+    sb.append(gd, od);
+    inCity.innerHTML = "<b style='color:var(--orange)'>What's generated inside New York City.</b> The mix above is <b>statewide</b>. Power generated within the five boroughs and Westchester is about <b>"+ic.gasPct+"% natural gas, with 0% nuclear and 0% hydro</b> (EPA eGRID, "+ic.year+"). New York's nuclear and large hydro are all upstate; Indian Point — the only plant near the city — closed in 2021, so the "+fmt(nucNow,1)+"% nuclear shown above does not come from the city's own generation.";
+    inCity.append(sb);
+    const ictail = el("div"); ictail.style.cssText="margin-top:6px"; ictail.innerHTML = "This is generation <i>located</i> in the city; New York City also imports a large share of its power, and imported electricity can't be cleanly traced to a specific fuel.";
+    inCity.append(ictail);
+    mixCard.append(inCity);
+  }
   document.getElementById("root").append(mixCard);
 
   // ================= WHAT NYC IS CONSUMING =================

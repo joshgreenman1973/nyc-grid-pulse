@@ -4,6 +4,15 @@
   "usSource": "U.S. EPA eGRID2023 subregion CO2 total output emission rate (lb/MWh), converted at 0.4536 g/kWh per lb/MWh. Released 2025; reflects 2023 generation.",
   "intlSource": "Our World in Data, from Ember and the Energy Institute Statistical Review of World Energy — CO2 intensity of electricity generation, 2024.",
   "caveat": "Carbon intensity is defined at the grid level, not the city level. U.S. cities are mapped to their EPA eGRID subregion (the most local official figure available); NYC has its own subregion (NYC/Westchester), but others (e.g. RFC West for Chicago) are large multi-state regions, so a city's actual utility may be cleaner or dirtier. International figures are national grids, the most local available. These are annual averages and use slightly different methodologies across the two sources; the live figure elsewhere on this page is real-time and statewide, not directly comparable.",
+  "nycInCity": {
+    "source": "U.S. EPA eGRID2023, NYC/Westchester (NYCW) subregion resource mix",
+    "year": 2023,
+    "netGenMWh": 34602268,
+    "gasPct": 98.2,
+    "nuclearPct": 0.0,
+    "renewablePct": 0.1,
+    "note": "Generation located inside the NYC/Westchester subregion. Almost entirely natural gas; no nuclear or hydro. New York's nuclear plants are all upstate, and Indian Point (the only one near the city) closed in 2021. This is generation inside the city, not total consumption — NYC also imports a large share of its power, and imported electricity cannot be cleanly attributed to a fuel."
+  },
   "cities": [
     {"city": "Paris", "region": "France — national grid", "g": 40, "year": 2024, "intl": true, "src": "Ember / Energy Institute via OWID"},
     {"city": "Los Angeles", "region": "California — eGRID CAMX", "g": 194, "lb": 428.5, "year": 2023, "src": "EPA eGRID2023"},
