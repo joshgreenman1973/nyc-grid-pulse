@@ -114,6 +114,16 @@
   .zbar .zval .znow { display:block; font-size: 11px; color: var(--faint); }
   .zbar.nyc .zname { color: var(--amber); font-weight: 700; }
 
+  .gcrow { display: grid; grid-template-columns: 156px 1fr 84px; align-items: center; gap: 12px; margin: 8px 0; }
+  .gcname { font-size: 13.5px; line-height: 1.25; }
+  .gcname .gcregion { display: block; font-size: 11px; color: var(--faint); }
+  .gcname .gcflag { font-size: 10px; color: var(--faint); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 5px; vertical-align: middle; }
+  .gctrack { background: var(--bg2); border: 1px solid var(--line); border-radius: 6px; height: 24px; overflow: hidden; }
+  .gcfill { height: 100%; border-radius: 5px 0 0 5px; }
+  .gcrow.hl .gcname { color: var(--amber); font-weight: 700; }
+  .gcrow.hl .gctrack { border-color: var(--amber); }
+  .gcval { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; font-size: 13.5px; }
+
   /* methodology */
   details.method { margin-top: 30px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px; }
   details.method summary { cursor: pointer; padding: 16px 0; font-weight: 600; font-size: 15px; list-style: none; }
@@ -244,8 +254,9 @@ function load(){
     // baseline.json and peakers.json are built on slower schedules; treat as optional
     fetch("data/baseline.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch("data/peakers.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch("data/grid-carbon.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
   ])
-    .then(([D, B, Pk]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk); })
+    .then(([D, B, Pk, GC]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk, GC); })
     .catch(e => {
       document.getElementById("root").innerHTML =
         '<div class="err">Could not load grid data ('+e.message+'). The snapshot file <code>data/latest.json</code> may not have been generated yet. Run <code>node fetch-data.mjs</code>.</div>';
@@ -255,7 +266,7 @@ load();
 // re-pull the snapshot every 5 minutes so an open tab stays current
 setInterval(load, 5 * 60 * 1000);
 
-function render(D, B, Pk){
+function render(D, B, Pk, GC){
   const L = D.latest;
   // ---------- updated line ----------
   const ageMin = Math.max(0, Math.round((Date.now() - new Date(D.generatedAt)) / 60000));
@@ -521,6 +532,36 @@ function render(D, B, Pk){
   );
   co2Card.append(cmini);
   document.getElementById("root").append(co2Card);
+
+  // ================= GRID CARBON INTENSITY BY CITY =================
+  if(GC && GC.cities?.length){
+    document.getElementById("root").append(sectionTag("How clean is the grid — city by city"));
+    const gcCard = el("div","card");
+    gcCard.append(h2("Grid carbon intensity by city", GC.what+" Each city is shown by the grid it sits on — U.S. cities by their EPA eGRID subregion (the most local official figure), international cities by their national grid."));
+    const cities = GC.cities.slice().sort((a,b)=>a.g-b.g);
+    const maxG = Math.max(...cities.map(c=>c.g));
+    for(const c of cities){
+      const row = el("div","gcrow"+(c.highlight?" hl":""));
+      const name = el("div","gcname");
+      name.innerHTML = c.city + (c.intl?" <span class='gcflag'>intl</span>":"") + "<span class='gcregion'>"+c.region+" · "+c.year+"</span>";
+      const track = el("div","gctrack"); const fill = el("div","gcfill");
+      fill.style.width = (c.g/maxG*100)+"%";
+      const hue = 125*(1 - Math.min(c.g,500)/500); // green (clean) -> red (dirty)
+      fill.style.background = c.highlight ? cssVar("--amber") : "hsl("+hue.toFixed(0)+",62%,50%)";
+      track.append(fill);
+      const val = el("div","gcval"); val.textContent = c.g+" g";
+      row.append(name, track, val);
+      gcCard.append(row);
+    }
+    const nyc = cities.find(c=>c.highlight);
+    const gn = el("div"); gn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:16px";
+    gn.innerHTML = "New York City's <b>local</b> grid (NYC/Westchester) is gas-heavy — about 98% of in-city generation is natural gas — so at "+(nyc?nyc.g:392)+" g/kWh it ranks among the dirtier grids here, above London, Boston and Los Angeles. The cleaner hydro and nuclear New York State relies on sit upstate (the upstate subregion is roughly 110 g). Paris is low because France runs mostly on nuclear; Tokyo is high because Japan leans on imported fossil fuels.";
+    gcCard.append(gn);
+    const gsrc = el("div"); gsrc.style.cssText="color:var(--faint);font-size:12px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px";
+    gsrc.innerHTML = "Unit: grams CO₂ per kWh, annual average. U.S.: "+GC.usSource+" International: "+GC.intlSource+"<br>"+GC.caveat;
+    gcCard.append(gsrc);
+    document.getElementById("root").append(gcCard);
+  }
 
   // ================= PEAKER PLANTS =================
   if(Pk && Pk.plants?.length){
@@ -882,6 +923,9 @@ function buildMethod(D){
 
     <h4>Indian Point toggle (illustrative)</h4>
     <p>The "if Indian Point ran" toggle on the generation mix is a counterfactual, clearly labeled as such. It adds 2,060 MW of nuclear — the net summer capacity of the retired Indian Point Energy Center (Unit 2 ~1,020 MW, retired April 30, 2020; Unit 3 ~1,040 MW, retired April 30, 2021, per the U.S. Energy Information Administration) — and removes an equal amount of fossil generation proportionally across natural gas, dual-fuel and other fossil fuels, holding total generation equal to demand. Nuclear plants run as baseload near full output around the clock, so adding the full capacity is a reasonable illustration of scale. It is <i>not</i> a precise simulation: in reality the market would have dispatched plants differently, and prices and interchange would differ. Capacity and dates are verified facts; the displacement is the stated assumption.</p>
+
+    <h4>Grid carbon intensity by city</h4>
+    <p>Carbon intensity (grams of CO₂ per kWh) is a grid-level quantity, so each city is mapped to the grid it sits on. U.S. cities use their U.S. EPA eGRID2023 subregion CO₂ total output emission rate (lb/MWh, converted at 0.4536 g/kWh per lb/MWh) — the most local official figure; New York City has its own subregion (NYC/Westchester), while others such as Chicago's (RFC West) span multiple states, so a city's own utility may differ. International cities use their national grid's CO₂ intensity of generation from Our World in Data (Ember / Energy Institute), 2024. These are annual averages from two source families and are not directly comparable to the real-time, statewide figure shown in the carbon-intensity card above. New York City's local subregion is unusually gas-heavy (~98% of in-city generation), which is why it ranks high.</p>
 
     <h4>Peaker plants</h4>
     <p>Plant locations come from U.S. EIA Form 860M, the federal inventory of every operating generator (with coordinates, prime mover, capacity and sector). We count a plant as a New York City peaker if it sits in the five boroughs, its prime mover is a simple-cycle combustion turbine (GT) or internal-combustion engine (IC), and it is in the Electric Utility or merchant IPP sector. That last filter deliberately excludes the many hospital, university and commercial backup/cogeneration engines EIA also lists, which are not grid peaking plants. NYISO does not publish unit-level real-time output, so the dashboard cannot show which individual plants are running at a given moment; the "dispatchable fossil generation" figures are statewide fuel-category totals from the live feed, shown as the closest public proxy for peaking activity.</p>

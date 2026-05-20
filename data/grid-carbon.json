@@ -1,0 +1,18 @@
+{
+  "unit": "gCO2/kWh",
+  "what": "Annual-average carbon dioxide intensity of electricity generation — grams of CO2 per kilowatt-hour. Lower is cleaner.",
+  "usSource": "U.S. EPA eGRID2023 subregion CO2 total output emission rate (lb/MWh), converted at 0.4536 g/kWh per lb/MWh. Released 2025; reflects 2023 generation.",
+  "intlSource": "Our World in Data, from Ember and the Energy Institute Statistical Review of World Energy — CO2 intensity of electricity generation, 2024.",
+  "caveat": "Carbon intensity is defined at the grid level, not the city level. U.S. cities are mapped to their EPA eGRID subregion (the most local official figure available); NYC has its own subregion (NYC/Westchester), but others (e.g. RFC West for Chicago) are large multi-state regions, so a city's actual utility may be cleaner or dirtier. International figures are national grids, the most local available. These are annual averages and use slightly different methodologies across the two sources; the live figure elsewhere on this page is real-time and statewide, not directly comparable.",
+  "cities": [
+    {"city": "Paris", "region": "France — national grid", "g": 40, "year": 2024, "intl": true, "src": "Ember / Energy Institute via OWID"},
+    {"city": "Los Angeles", "region": "California — eGRID CAMX", "g": 194, "lb": 428.5, "year": 2023, "src": "EPA eGRID2023"},
+    {"city": "London", "region": "Great Britain — national grid", "g": 217, "year": 2024, "intl": true, "src": "Ember / Energy Institute via OWID"},
+    {"city": "Boston", "region": "New England — eGRID NEWE", "g": 245, "lb": 539.3, "year": 2023, "src": "EPA eGRID2023"},
+    {"city": "Houston", "region": "Texas / ERCOT — eGRID ERCT", "g": 333, "lb": 733.9, "year": 2023, "src": "EPA eGRID2023"},
+    {"city": "Miami", "region": "Florida — eGRID FRCC", "g": 355, "lb": 782.3, "year": 2023, "src": "EPA eGRID2023"},
+    {"city": "New York City", "region": "NYC + Westchester — eGRID NYCW", "g": 392, "lb": 864.5, "year": 2023, "src": "EPA eGRID2023", "highlight": true},
+    {"city": "Chicago", "region": "RFC West — eGRID RFCW", "g": 413, "lb": 911.4, "year": 2023, "src": "EPA eGRID2023"},
+    {"city": "Tokyo", "region": "Japan — national grid", "g": 483, "year": 2024, "intl": true, "src": "Ember / Energy Institute via OWID"}
+  ]
+}
