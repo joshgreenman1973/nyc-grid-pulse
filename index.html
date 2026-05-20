@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NYC Grid Pulse — New York City's electricity in real time</title>
+<style>
+  :root {
+    --bg: #0a0e16;
+    --bg2: #0e1422;
+    --panel: #131b2c;
+    --panel2: #182338;
+    --line: #243348;
+    --text: #eaf0fb;
+    --muted: #8492ab;
+    --faint: #5a6880;
+    --amber: #ffb020;
+    --green: #34d399;
+    --red: #f97362;
+    --cyan: #38bdf8;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --lime: #a3e635;
+    --orange: #fb923c;
+    --gas: #f59e0b;
+    --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 36px rgba(0,0,0,.45);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(96,165,250,.10), transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, rgba(255,176,32,.06), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  /* header */
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .pulse-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: pulse 2.4s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55);} 70% { box-shadow: 0 0 0 12px rgba(52,211,153,0);} 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0);} }
+  h1 { font-size: 26px; margin: 0; letter-spacing: -.4px; }
+  h1 span { color: var(--muted); font-weight: 500; }
+  .sub { color: var(--muted); font-size: 14px; margin-top: 3px; }
+  .updated { text-align: right; font-size: 12.5px; color: var(--muted); }
+  .updated b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .updated .live { color: var(--green); font-weight: 600; }
+
+  /* hero stats */
+  .hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
+  .stat { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 16px; padding: 18px 18px 16px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .stat::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--amber)); opacity: .85; }
+  .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+  .stat .big { font-family: var(--mono); font-size: 34px; font-weight: 600; letter-spacing: -1px; margin-top: 8px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat .unit { font-size: 15px; color: var(--muted); font-weight: 500; }
+  .stat .note { font-size: 12.5px; color: var(--faint); margin-top: 8px; }
+
+  /* layout cards */
+  .grid { display: grid; gap: 18px; }
+  .cols-2 { grid-template-columns: 1.15fr .85fr; }
+  .cols-2b { grid-template-columns: 1fr 1fr; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
+  .card h2 { font-size: 17px; margin: 0 0 2px; letter-spacing: -.2px; }
+  .card .desc { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  .section-tag { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--faint); font-weight: 700; margin: 34px 0 14px; display:flex; align-items:center; gap:10px;}
+  .section-tag::after { content:""; flex:1; height:1px; background: var(--line); }
+
+  /* fuel mix donut + legend */
+  .mix { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: center; }
+  .donut-wrap { position: relative; width: 200px; height: 200px; }
+  .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  .donut-center .pct { font-family: var(--mono); font-size: 32px; font-weight: 600; color: var(--green); }
+  .donut-center .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .legend { display: flex; flex-direction: column; gap: 9px; }
+  .legrow { display: grid; grid-template-columns: 14px 1fr auto auto; gap: 10px; align-items: center; font-size: 13.5px; }
+  .swatch { width: 13px; height: 13px; border-radius: 4px; }
+  .legrow .mw { font-family: var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .legrow .pct { font-family: var(--mono); color: var(--text); width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .splitbar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; margin-top: 4px; border: 1px solid var(--line); }
+  .splitbar > div { display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:#0a0e16; }
+
+  /* charts */
+  .chart { width: 100%; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .axis text { fill: var(--faint); font-size: 11px; font-family: var(--mono); }
+  .axis line, .axis path { stroke: var(--line); }
+  .gridline { stroke: var(--line); stroke-dasharray: 2 4; opacity: .55; }
+  .tip { position: fixed; pointer-events: none; background: #05080f; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; font-size: 12.5px; color: var(--text); box-shadow: 0 8px 24px rgba(0,0,0,.5); z-index: 30; opacity: 0; transition: opacity .08s; max-width: 240px; }
+  .tip .t-time { color: var(--muted); font-size: 11px; margin-bottom: 5px; font-family: var(--mono);}
+  .tip .t-row { display:flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+  .tip .t-row b { font-family: var(--mono); }
+
+  .miniflex { display:flex; gap: 28px; flex-wrap: wrap; margin-top: 4px; }
+  .mini .k { font-size: 12px; color: var(--muted); }
+  .mini .v { font-family: var(--mono); font-size: 20px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+  /* zone bars */
+  .zbar { display: grid; grid-template-columns: 92px 1fr 70px; align-items: center; gap: 12px; margin: 7px 0; font-size: 13.5px; }
+  .zbar .zname { color: var(--muted); }
+  .zbar .ztrack { background: var(--bg2); border-radius: 6px; height: 22px; position: relative; overflow:hidden; border: 1px solid var(--line); }
+  .zbar .zfill { height: 100%; border-radius: 5px 0 0 5px; }
+  .zbar .zval { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .zbar.nyc .zname { color: var(--amber); font-weight: 700; }
+
+  /* methodology */
+  details.method { margin-top: 30px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px; }
+  details.method summary { cursor: pointer; padding: 16px 0; font-weight: 600; font-size: 15px; list-style: none; }
+  details.method summary::-webkit-details-marker { display:none; }
+  details.method summary::before { content: "▸ "; color: var(--muted); }
+  details.method[open] summary::before { content: "▾ "; }
+  details.method .body { padding-bottom: 18px; color: var(--muted); font-size: 13.5px; }
+  details.method h4 { color: var(--text); font-size: 13.5px; margin: 16px 0 6px; }
+  details.method a { color: var(--blue); }
+  details.method code { font-family: var(--mono); background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; color: var(--cyan);}
+  details.method table { width:100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px;}
+  details.method td, details.method th { text-align:left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  details.method th { color: var(--text); }
+  details.method td.n { font-family: var(--mono); text-align:right; }
+
+  footer { margin-top: 40px; color: var(--faint); font-size: 12.5px; text-align: center; }
+  footer a { color: var(--muted); }
+
+  @media (max-width: 880px) {
+    .hero { grid-template-columns: repeat(2, 1fr); }
+    .cols-2, .cols-2b { grid-template-columns: 1fr; }
+    .mix { grid-template-columns: 1fr; justify-items: center; }
+  }
+  @media (max-width: 480px) {
+    .hero { grid-template-columns: 1fr; }
+    h1 { font-size: 22px; }
+  }
+  .err { background: #2a1316; border:1px solid #5a2a2e; color:#ffb4ad; padding:14px 16px; border-radius:12px; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="brand">
+        <div class="pulse-dot"></div>
+        <h1>NYC Grid Pulse <span>· live electricity</span></h1>
+      </div>
+      <div class="sub">How much power New York City is pulling, where it's generated and what it costs — drawn from New York Independent System Operator (NYISO) real-time feeds.</div>
+    </div>
+    <div class="updated" id="updated">Loading…</div>
+  </header>
+
+  <div id="root"></div>
+
+  <details class="method">
+    <summary>Methodology, sources and definitions</summary>
+    <div class="body" id="method"></div>
+  </details>
+
+  <footer>
+    Data: <a href="https://www.nyiso.com/real-time-dashboard" target="_blank" rel="noopener">NYISO real-time dashboard</a> and public CSV feeds.
+    This is an independent visualization, not affiliated with NYISO. Not an official source.
+  </footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const FUEL_COLORS = {
+  "Nuclear": "var(--purple)",
+  "Hydro": "var(--cyan)",
+  "Wind": "var(--green)",
+  "Other Renewables": "var(--lime)",
+  "Dual Fuel": "var(--gas)",
+  "Natural Gas": "var(--orange)",
+  "Other Fossil Fuels": "var(--red)",
+};
+const FUEL_ORDER = ["Nuclear","Hydro","Wind","Other Renewables","Dual Fuel","Natural Gas","Other Fossil Fuels"];
+const CLEAN = new Set(["Nuclear","Hydro","Wind","Other Renewables"]);
+const ZONE_LABELS = {
+  "N.Y.C.":"New York City","LONGIL":"Long Island","HUD VL":"Hudson Valley","DUNWOD":"Dunwoodie",
+  "MILLWD":"Millwood","CAPITL":"Capital","CENTRL":"Central","GENESE":"Genesee","MHK VL":"Mohawk Valley",
+  "NORTH":"North","WEST":"West"
+};
+
+const fmt = (n, d=0) => n==null ? "—" : Number(n).toLocaleString("en-US",{maximumFractionDigits:d, minimumFractionDigits:d});
+const tip = document.getElementById("tip");
+function showTip(html, x, y){ tip.innerHTML=html; tip.style.opacity=1; tip.style.left=Math.min(x+14, innerWidth-250)+"px"; tip.style.top=(y+14)+"px"; }
+function hideTip(){ tip.style.opacity=0; }
+function hhmm(t){ const d=t.split("T")[1]; return d.slice(0,5); }
+
+function cssVar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || v; }
+
+// ---------- main ----------
+function load(){
+  fetch("data/latest.json?_=" + Date.now())
+    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(D => { document.getElementById("root").innerHTML=""; render(D); })
+    .catch(e => {
+      document.getElementById("root").innerHTML =
+        '<div class="err">Could not load grid data ('+e.message+'). The snapshot file <code>data/latest.json</code> may not have been generated yet. Run <code>node fetch-data.mjs</code>.</div>';
+    });
+}
+load();
+// re-pull the snapshot every 5 minutes so an open tab stays current
+setInterval(load, 5 * 60 * 1000);
+
+function render(D){
+  const L = D.latest;
+  // ---------- updated line ----------
+  const ageMin = Math.max(0, Math.round((Date.now() - new Date(D.generatedAt)) / 60000));
+  document.getElementById("updated").innerHTML =
+    '<div><span class="live">● LIVE</span> · reading of <b>'+hhmm(L.t)+'</b> ET</div>' +
+    '<div style="margin-top:3px">snapshot built '+ageMin+' min ago · '+D.sourceDate+'</div>';
+
+  // ---------- running wholesale spend today (integrate load × price over 5-min steps) ----------
+  const priceByT = new Map(D.price.map(p => [p.t, p.zones?.["N.Y.C."]?.lbmp]));
+  let spendToday = 0, mwhToday = 0;
+  for(const l of D.load){
+    if(l.nyc==null) continue;
+    const pr = priceByT.get(l.t);
+    const hours = 5/60;
+    mwhToday += l.nyc * hours;
+    if(pr!=null) spendToday += l.nyc * pr * hours;
+  }
+
+  const centsKwh = L.nycPriceLbmp!=null ? (L.nycPriceLbmp/10) : null; // $/MWh ÷ 10 = ¢/kWh
+
+  // ---------- hero ----------
+  const hero = el("div","hero");
+  hero.append(
+    statCard("NYC power draw right now", fmt(L.nycLoadMW), "MW", "var(--amber)",
+      "Megawatts (MW) of load in NYISO Zone J (New York City) — today's peak so far "+fmt(L.peakNyc.mw)+" MW at "+hhmm(L.peakNyc.t)),
+    statCard("Share of New York State", fmt(L.nycSharePct,1)+"%", "of statewide load", "var(--blue)",
+      "Statewide load right now: "+fmt(L.stateLoadMW)+" MW across 11 zones"),
+    statCard("Wholesale price", "$"+fmt(L.nycPriceLbmp,2), "/MWh · "+fmt(centsKwh,1)+"¢/kWh", "var(--red)",
+      "Real-time locational price for New York City — energy only, before delivery and taxes"),
+    statCard("Wholesale spend rate", "$"+fmt(Math.round(L.nycSpendPerHour/1000))+"K", "/hour", "var(--green)",
+      "≈ NYC load × NYC price · about $"+fmt(spendToday/1e6,2)+"M on energy so far today")
+  );
+  document.getElementById("root").append(hero);
+
+  // ================= WHERE THE POWER COMES FROM =================
+  document.getElementById("root").append(sectionTag("Where the power comes from"));
+
+  const cats = L.fuelCats;
+  const total = L.genTotalMW;
+  const ordered = FUEL_ORDER.filter(f => cats[f]!=null).map(f => ({name:f, mw:cats[f], pct: cats[f]/total*100}));
+  const cleanMW = ordered.filter(o=>CLEAN.has(o.name)).reduce((a,b)=>a+b.mw,0);
+  const fossilMW = total - cleanMW;
+
+  const mixCard = el("div","card");
+  mixCard.append(h2("Statewide generation mix", "Power generated across New York State right now, by fuel — totals "+fmt(total)+" MW. NYISO reports fuel mix statewide, not per zone."));
+  const mix = el("div","mix");
+  mix.append(donut(ordered, total, L.cleanPct), legend(ordered, total));
+  mixCard.append(mix);
+
+  // clean vs fossil split bar
+  const split = el("div"); split.style.marginTop="18px";
+  split.append(h4mini("Carbon-free vs fossil generation"));
+  const sb = el("div","splitbar");
+  const cleanDiv = el("div"); cleanDiv.style.width=(cleanMW/total*100)+"%"; cleanDiv.style.background=cssVar("--green"); cleanDiv.textContent=fmt(cleanMW/total*100,0)+"% carbon-free";
+  const fosDiv = el("div"); fosDiv.style.width=(fossilMW/total*100)+"%"; fosDiv.style.background=cssVar("--orange"); fosDiv.style.color="#1a1206"; fosDiv.textContent=fmt(fossilMW/total*100,0)+"% fossil";
+  sb.append(cleanDiv, fosDiv); split.append(sb);
+  const sn = el("div"); sn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:8px";
+  sn.innerHTML = "Carbon-free = nuclear + hydro + wind + other renewables ("+fmt(cleanMW)+" MW). Fossil = natural gas + dual-fuel + other fossil fuels ("+fmt(fossilMW)+" MW).";
+  split.append(sn);
+  mixCard.append(split);
+
+  // stacked area of fuel mix over the day
+  const areaCard = el("div","card");
+  areaCard.append(h2("Generation mix through the day", "Stacked output by fuel since midnight, 5-minute resolution. Hover for the breakdown at any moment."));
+  areaCard.append(stackedArea(D.fuelMix));
+
+  const g1 = el("div","grid cols-2"); g1.append(mixCard, areaCard);
+  document.getElementById("root").append(g1);
+
+  // ================= WHAT NYC IS CONSUMING =================
+  document.getElementById("root").append(sectionTag("What New York City is consuming"));
+
+  const loadCard = el("div","card");
+  loadCard.append(h2("New York City load vs. NYISO forecast", "Megawatts drawn by Zone J since midnight (solid), against NYISO's own day-ahead zonal load forecast (dashed). Both are the same metric from the same operator, so they compare directly."));
+  loadCard.append(lineChart(D.load.map(l=>({t:l.t, v:l.nyc})),
+    {color:cssVar("--amber"), unit:"MW", fill:true, label:"Actual load",
+     compare:{data:(D.forecast||[]).filter(f=>f.t.startsWith(D.sourceDate)).map(f=>({t:f.t, v:f.nyc})), color:cssVar("--muted"), label:"NYISO forecast"}}));
+  const lmini = el("div","miniflex");
+  const minNyc = D.load.reduce((m,l)=> l.nyc!=null && l.nyc<m.v ? {v:l.nyc,t:l.t}:m, {v:Infinity,t:null});
+  const vsF = L.loadVsForecastPct;
+  lmini.append(
+    mini("Now", fmt(L.nycLoadMW)+" MW"),
+    mini("vs forecast", (vsF>0?"+":"")+fmt(vsF,1)+"% · "+fmt(L.nycForecastMW)+" MW"),
+    mini("Peak today", fmt(L.peakNyc.mw)+" MW · "+hhmm(L.peakNyc.t)),
+    mini("Energy so far today", fmt(mwhToday/1000,1)+" GWh")
+  );
+  loadCard.append(lmini);
+
+  // NYC vs rest-of-state share area
+  const shareCard = el("div","card");
+  shareCard.append(h2("New York City's share of statewide demand", "Zone J load as a percent of all 11 zones, through the day."));
+  shareCard.append(lineChart(D.load.map(l=>({t:l.t, v: l.nyc!=null&&l.total? l.nyc/l.total*100 : null})), {color:cssVar("--blue"), unit:"%", fill:true, dec:1}));
+  const smini = el("div","miniflex");
+  smini.append(mini("Now", fmt(L.nycSharePct,1)+"%"), mini("Statewide load now", fmt(L.stateLoadMW)+" MW"));
+  shareCard.append(smini);
+
+  const g2 = el("div","grid cols-2b"); g2.append(loadCard, shareCard);
+  document.getElementById("root").append(g2);
+
+  // ================= WHAT IT COSTS =================
+  document.getElementById("root").append(sectionTag("What it costs"));
+
+  const priceCard = el("div","card");
+  priceCard.append(h2("Real-time vs. day-ahead price in New York City", "Real-time locational-based marginal price (LBMP) for Zone J (solid) against the price the day-ahead market set the evening before (dashed). Both are LBMP in dollars per megawatt-hour — energy only, before delivery and taxes."));
+  const nycPrices = D.price.map(p=>({t:p.t, v:p.zones?.["N.Y.C."]?.lbmp}));
+  priceCard.append(lineChart(nycPrices,
+    {color:cssVar("--red"), unit:"$/MWh", fill:true, dec:2, label:"Real-time",
+     compare:{data:(D.dayAhead||[]).map(d=>({t:d.t, v:d.nyc})), color:cssVar("--cyan"), label:"Day-ahead"}}));
+  const pvals = nycPrices.filter(p=>p.v!=null);
+  const hi = pvals.reduce((m,p)=>p.v>m.v?p:m, {v:-Infinity});
+  const lo = pvals.reduce((m,p)=>p.v<m.v?p:m, {v:Infinity});
+  const avg = pvals.reduce((a,b)=>a+b.v,0)/pvals.length;
+  const vsDa = L.rtVsDaPct;
+  const pmini = el("div","miniflex");
+  pmini.append(
+    mini("Real-time now", "$"+fmt(L.nycPriceLbmp,2)),
+    mini("Day-ahead this hour", L.nycDayAheadLbmp!=null ? "$"+fmt(L.nycDayAheadLbmp,2)+" · "+(vsDa>0?"+":"")+fmt(vsDa,0)+"%" : "—"),
+    mini("Average today", "$"+fmt(avg,2)),
+    mini("Most expensive", "$"+fmt(hi.v,2)+" · "+hhmm(hi.t))
+  );
+  priceCard.append(pmini);
+
+  // zone comparison bars (now)
+  const zoneCard = el("div","card");
+  zoneCard.append(h2("Price by zone right now", "Locations with transmission constraints pay more. New York City and Long Island are load pockets that frequently price above upstate."));
+  const lastP = D.price[D.price.length-1].zones;
+  const zoneRows = Object.entries(ZONE_LABELS)
+    .map(([k,label]) => ({k, label, v: lastP[k]?.lbmp}))
+    .filter(z => z.v!=null)
+    .sort((a,b)=>b.v-a.v);
+  const maxZ = Math.max(...zoneRows.map(z=>z.v));
+  const minZ = Math.min(...zoneRows.map(z=>z.v), 0);
+  const rangeZ = maxZ - minZ || 1;
+  for(const z of zoneRows){
+    const row = el("div","zbar"+(z.k==="N.Y.C."?" nyc":""));
+    const track = el("div","ztrack");
+    const fill = el("div","zfill");
+    fill.style.width = ((z.v-minZ)/rangeZ*100)+"%";
+    fill.style.background = z.k==="N.Y.C." ? cssVar("--amber") : z.k==="LONGIL" ? cssVar("--orange") : cssVar("--blue");
+    track.append(fill);
+    row.append(spanT("zname", z.label), track, spanT("zval","$"+fmt(z.v,2)));
+    zoneCard.append(row);
+  }
+
+  const g3 = el("div","grid cols-2"); g3.append(priceCard, zoneCard);
+  document.getElementById("root").append(g3);
+
+  // context card: wholesale vs retail
+  const ctx = el("div","card"); ctx.style.marginTop="18px";
+  ctx.append(h2("Putting the price in context", "Wholesale energy is only one slice of a New York City electric bill."));
+  const ctxFlex = el("div","miniflex");
+  ctxFlex.append(
+    mini("Wholesale energy now", fmt(centsKwh,1)+"¢/kWh"),
+    mini("Typical Con Edison residential rate", "~30¢/kWh"),
+    mini("Difference", "delivery, capacity, taxes")
+  );
+  ctx.append(ctxFlex);
+  const cn = el("div"); cn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
+  cn.innerHTML = "The LBMP shown here is the wholesale energy commodity price set in the NYISO market. A household bill also includes delivery charges, capacity payments, system-benefit charges and taxes, which together typically more than triple the per-kilowatt-hour cost. The ~30¢/kWh figure is an approximate Con Edison residential all-in rate for context and is not from the NYISO feed.";
+  ctx.append(cn);
+  document.getElementById("root").append(ctx);
+
+  // ================= CARBON INTENSITY =================
+  document.getElementById("root").append(sectionTag("Carbon intensity"));
+  const co2Card = el("div","card");
+  co2Card.append(h2("Estimated carbon intensity of generation", "Pounds of carbon dioxide per megawatt-hour, estimated from the statewide fuel mix and standard emission factors. Lower means cleaner power."));
+  co2Card.append(lineChart(D.fuelMix.map(f=>({t:f.t, v:f.co2RateLbsPerMWh})), {color:cssVar("--orange"), unit:"lbs/MWh", fill:true}));
+  const cmini = el("div","miniflex");
+  const co2vals = D.fuelMix.map(f=>f.co2RateLbsPerMWh);
+  cmini.append(
+    mini("Now", fmt(L.co2RateLbsPerMWh)+" lbs/MWh"),
+    mini("Cleanest today", fmt(Math.min(...co2vals))+" lbs/MWh"),
+    mini("Dirtiest today", fmt(Math.max(...co2vals))+" lbs/MWh"),
+    mini("Carbon-free share now", fmt(L.cleanPct,1)+"%")
+  );
+  co2Card.append(cmini);
+  document.getElementById("root").append(co2Card);
+
+  buildMethod(D);
+}
+
+// ---------- component builders ----------
+function el(tag, cls){ const e=document.createElement(tag); if(cls) e.className=cls; return e; }
+function spanT(cls, txt){ const s=el("span",cls); s.textContent=txt; return s; }
+function h2(title, desc){ const w=el("div"); const a=el("h2"); a.textContent=title; const b=el("p","desc"); b.textContent=desc; w.append(a,b); return w; }
+function h4mini(t){ const e=el("div"); e.style.cssText="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:600"; e.textContent=t; return e; }
+function sectionTag(t){ const e=el("div","section-tag"); e.textContent=t; return e; }
+function mini(k,v){ const w=el("div","mini"); const a=el("div","k"); a.textContent=k; const b=el("div","v"); b.textContent=v; w.append(a,b); return w; }
+function statCard(label, big, unit, color, note){
+  const c=el("div","stat"); c.style.setProperty("--accent",color);
+  const l=el("div","label"); l.textContent=label;
+  const b=el("div","big"); b.textContent=big; b.style.color=color;
+  const u=el("span","unit"); u.textContent=" "+unit; b.append(u);
+  const n=el("div","note"); n.textContent=note;
+  c.append(l,b,n); return c;
+}
+
+function donut(ordered, total, cleanPct){
+  const size=200, r=82, cx=100, cy=100, sw=26, C=2*Math.PI*r;
+  const ns="http://www.w3.org/2000/svg";
+  const wrap=el("div","donut-wrap");
+  const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 200 200"); svg.style.width=size+"px"; svg.style.height=size+"px";
+  let off=0;
+  const bg=document.createElementNS(ns,"circle"); bg.setAttribute("cx",cx); bg.setAttribute("cy",cy); bg.setAttribute("r",r);
+  bg.setAttribute("fill","none"); bg.setAttribute("stroke","var(--bg2)"); bg.setAttribute("stroke-width",sw); svg.append(bg);
+  for(const o of ordered){
+    const frac=o.mw/total;
+    const arc=document.createElementNS(ns,"circle");
+    arc.setAttribute("cx",cx); arc.setAttribute("cy",cy); arc.setAttribute("r",r);
+    arc.setAttribute("fill","none"); arc.setAttribute("stroke",FUEL_COLORS[o.name]); arc.setAttribute("stroke-width",sw);
+    arc.setAttribute("stroke-dasharray", (frac*C)+" "+C);
+    arc.setAttribute("stroke-dashoffset", -off*C);
+    arc.setAttribute("transform","rotate(-90 "+cx+" "+cy+")");
+    arc.style.cursor="pointer";
+    arc.addEventListener("mousemove",e=>showTip('<div class="t-time">'+o.name+'</div><div class="t-row"><span>'+fmt(o.mw)+' MW</span><b>'+fmt(o.pct,1)+'%</b></div>', e.clientX, e.clientY));
+    arc.addEventListener("mouseleave",hideTip);
+    svg.append(arc); off+=frac;
+  }
+  wrap.append(svg);
+  const center=el("div","donut-center");
+  center.innerHTML='<div class="pct">'+fmt(cleanPct,0)+'%</div><div class="cap">carbon-free</div>';
+  wrap.append(center);
+  return wrap;
+}
+
+function legend(ordered, total){
+  const w=el("div","legend");
+  for(const o of ordered){
+    const row=el("div","legrow");
+    const sw=el("div","swatch"); sw.style.background=FUEL_COLORS[o.name];
+    const nm=el("div"); nm.textContent=o.name;
+    const mw=el("div","mw"); mw.textContent=fmt(o.mw)+" MW";
+    const pct=el("div","pct"); pct.textContent=fmt(o.pct,1)+"%";
+    row.append(sw,nm,mw,pct); w.append(row);
+  }
+  return w;
+}
+
+// generic time-series line/area chart (SVG, responsive viewBox)
+// opts.compare = {data:[{t,v}], color, label} draws a second dashed line (e.g. forecast / day-ahead)
+function lineChart(series, opts){
+  const {color="#fff", unit="", fill=false, dec=0, compare=null} = opts||{};
+  const data = series.filter(d=>d.v!=null);
+  const cmp = compare ? compare.data.filter(d=>d.v!=null) : [];
+  const W=560, H=200, P={l:48,r:12,t:14,b:26};
+  const ns="http://www.w3.org/2000/svg";
+  const wrap=el("div","chart");
+  if(compare){
+    const lg=el("div"); lg.style.cssText="display:flex;gap:18px;font-size:12px;color:var(--muted);margin-bottom:6px";
+    lg.innerHTML='<span><span style="display:inline-block;width:14px;height:3px;background:'+color+';vertical-align:middle;margin-right:5px"></span>'+(opts.label||"Actual")+'</span>'+
+      '<span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed '+compare.color+';vertical-align:middle;margin-right:5px"></span>'+compare.label+'</span>';
+    wrap.append(lg);
+  }
+  const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  if(!data.length){ wrap.append(svg); return wrap; }
+  const allV = data.map(d=>d.v).concat(cmp.map(d=>d.v));
+  const vmax=Math.max(...allV), vmin=Math.min(...allV, 0);
+  const pad=(vmax-vmin)*0.08||1; const ymax=vmax+pad, ymin=Math.max(0,vmin- (vmin>0?0:0));
+  const n=data.length;
+  const x=i=> P.l + i/(n-1)*(W-P.l-P.r);
+  const y=v=> H-P.b - (v-ymin)/(ymax-ymin)*(H-P.t-P.b);
+
+  // gridlines + y labels
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const val=ymin+(ymax-ymin)*i/ticks;
+    const yy=y(val);
+    const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
+    gl.setAttribute("x1",P.l); gl.setAttribute("x2",W-P.r); gl.setAttribute("y1",yy); gl.setAttribute("y2",yy); svg.append(gl);
+    const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",P.l-8); tx.setAttribute("y",yy+3);
+    tx.setAttribute("text-anchor","end"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","10.5"); tx.setAttribute("font-family","var(--mono)");
+    tx.textContent=fmt(val,dec); svg.append(tx);
+  }
+  // x labels (every ~4 hours)
+  for(let i=0;i<n;i++){
+    const mm=data[i].t.split("T")[1].slice(0,5);
+    if(mm.endsWith(":00") && +mm.slice(0,2)%4===0){
+      const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",x(i)); tx.setAttribute("y",H-8);
+      tx.setAttribute("text-anchor","middle"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","10.5"); tx.setAttribute("font-family","var(--mono)");
+      tx.textContent=mm; svg.append(tx);
+    }
+  }
+
+  const linePts=data.map((d,i)=>x(i)+","+y(d.v)).join(" ");
+  if(fill){
+    const grad="grad"+Math.random().toString(36).slice(2,7);
+    const defs=document.createElementNS(ns,"defs");
+    const lg=document.createElementNS(ns,"linearGradient"); lg.id=grad; lg.setAttribute("x1","0");lg.setAttribute("x2","0");lg.setAttribute("y1","0");lg.setAttribute("y2","1");
+    const s1=document.createElementNS(ns,"stop"); s1.setAttribute("offset","0%"); s1.setAttribute("stop-color",color); s1.setAttribute("stop-opacity","0.32");
+    const s2=document.createElementNS(ns,"stop"); s2.setAttribute("offset","100%"); s2.setAttribute("stop-color",color); s2.setAttribute("stop-opacity","0");
+    lg.append(s1,s2); defs.append(lg); svg.append(defs);
+    const area=document.createElementNS(ns,"polygon");
+    area.setAttribute("points", P.l+","+(H-P.b)+" "+linePts+" "+(x(n-1))+","+(H-P.b));
+    area.setAttribute("fill","url(#"+grad+")"); svg.append(area);
+  }
+  const pl=document.createElementNS(ns,"polyline");
+  pl.setAttribute("points",linePts); pl.setAttribute("fill","none"); pl.setAttribute("stroke",color); pl.setAttribute("stroke-width","2"); pl.setAttribute("stroke-linejoin","round");
+  svg.append(pl);
+
+  // comparison line (hourly) positioned by time-of-day within the primary span
+  if(cmp.length){
+    const mins=t=>{ const [h,m]=t.split("T")[1].split(":"); return +h*60+(+m); };
+    const m0=mins(data[0].t), mN=mins(data[n-1].t), span=(mN-m0)||1;
+    const xt=mm=>P.l + (mm-m0)/span*(W-P.l-P.r);
+    const cpts=cmp.filter(d=>mins(d.t)>=m0 && mins(d.t)<=mN).map(d=>xt(mins(d.t))+","+y(d.v)).join(" ");
+    const cl=document.createElementNS(ns,"polyline");
+    cl.setAttribute("points",cpts); cl.setAttribute("fill","none"); cl.setAttribute("stroke",compare.color);
+    cl.setAttribute("stroke-width","1.8"); cl.setAttribute("stroke-dasharray","5 4"); cl.setAttribute("opacity","0.9");
+    svg.append(cl);
+  }
+
+  // last point dot
+  const dot=document.createElementNS(ns,"circle"); dot.setAttribute("cx",x(n-1)); dot.setAttribute("cy",y(data[n-1].v)); dot.setAttribute("r",3.5); dot.setAttribute("fill",color); svg.append(dot);
+
+  // hover layer
+  const hoverLine=document.createElementNS(ns,"line"); hoverLine.setAttribute("stroke","var(--muted)"); hoverLine.setAttribute("stroke-width","1"); hoverLine.setAttribute("opacity","0"); hoverLine.setAttribute("y1",P.t); hoverLine.setAttribute("y2",H-P.b); svg.append(hoverLine);
+  const hoverDot=document.createElementNS(ns,"circle"); hoverDot.setAttribute("r",4); hoverDot.setAttribute("fill",color); hoverDot.setAttribute("stroke","#05080f"); hoverDot.setAttribute("stroke-width","2"); hoverDot.setAttribute("opacity","0"); svg.append(hoverDot);
+  const rect=document.createElementNS(ns,"rect"); rect.setAttribute("x",P.l); rect.setAttribute("y",P.t); rect.setAttribute("width",W-P.l-P.r); rect.setAttribute("height",H-P.t-P.b); rect.setAttribute("fill","transparent");
+  rect.addEventListener("mousemove",e=>{
+    const box=svg.getBoundingClientRect();
+    const px=(e.clientX-box.left)/box.width*W;
+    let i=Math.round((px-P.l)/(W-P.l-P.r)*(n-1)); i=Math.max(0,Math.min(n-1,i));
+    const d=data[i];
+    hoverLine.setAttribute("x1",x(i)); hoverLine.setAttribute("x2",x(i)); hoverLine.setAttribute("opacity","0.6");
+    hoverDot.setAttribute("cx",x(i)); hoverDot.setAttribute("cy",y(d.v)); hoverDot.setAttribute("opacity","1");
+    showTip('<div class="t-time">'+hhmm(d.t)+' ET</div><div class="t-row"><span>'+ (unit) +'</span><b>'+fmt(d.v,dec)+'</b></div>', e.clientX, e.clientY);
+  });
+  rect.addEventListener("mouseleave",()=>{hideTip(); hoverLine.setAttribute("opacity","0"); hoverDot.setAttribute("opacity","0");});
+  svg.append(rect);
+  wrap.append(svg);
+  return wrap;
+}
+
+// stacked area for fuel mix
+function stackedArea(fuelMix){
+  const W=560,H=220,P={l:48,r:12,t:14,b:26};
+  const ns="http://www.w3.org/2000/svg";
+  const wrap=el("div","chart");
+  const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  const n=fuelMix.length;
+  const totals=fuelMix.map(f=>f.total);
+  const ymax=Math.max(...totals)*1.04;
+  const x=i=>P.l+i/(n-1)*(W-P.l-P.r);
+  const y=v=>H-P.b-(v/ymax)*(H-P.t-P.b);
+
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const val=ymax*i/ticks, yy=y(val);
+    const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
+    gl.setAttribute("x1",P.l);gl.setAttribute("x2",W-P.r);gl.setAttribute("y1",yy);gl.setAttribute("y2",yy);svg.append(gl);
+    const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",P.l-8);tx.setAttribute("y",yy+3);tx.setAttribute("text-anchor","end");
+    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");
+    tx.textContent=fmt(val/1000,0)+"k"; svg.append(tx);
+  }
+  for(let i=0;i<n;i++){
+    const mm=fuelMix[i].t.split("T")[1].slice(0,5);
+    if(mm.endsWith(":00") && +mm.slice(0,2)%4===0){
+      const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",x(i));tx.setAttribute("y",H-8);tx.setAttribute("text-anchor","middle");
+      tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)"); tx.textContent=mm; svg.append(tx);
+    }
+  }
+  // build cumulative bands bottom-up using FUEL_ORDER reversed so fossil sits on top
+  const stackOrder=[...FUEL_ORDER];
+  const base=new Array(n).fill(0);
+  for(const fuel of stackOrder){
+    const top=base.map((b,i)=> b + (fuelMix[i].cats[fuel]||0));
+    const pts=[];
+    for(let i=0;i<n;i++) pts.push(x(i)+","+y(top[i]));
+    for(let i=n-1;i>=0;i--) pts.push(x(i)+","+y(base[i]));
+    const poly=document.createElementNS(ns,"polygon");
+    poly.setAttribute("points",pts.join(" ")); poly.setAttribute("fill",FUEL_COLORS[fuel]); poly.setAttribute("opacity","0.85"); poly.setAttribute("stroke",FUEL_COLORS[fuel]); poly.setAttribute("stroke-width","0.4");
+    svg.append(poly);
+    for(let i=0;i<n;i++) base[i]=top[i];
+  }
+  // hover
+  const hoverLine=document.createElementNS(ns,"line"); hoverLine.setAttribute("stroke","#fff"); hoverLine.setAttribute("stroke-width","1"); hoverLine.setAttribute("opacity","0"); hoverLine.setAttribute("y1",P.t);hoverLine.setAttribute("y2",H-P.b); svg.append(hoverLine);
+  const rect=document.createElementNS(ns,"rect"); rect.setAttribute("x",P.l);rect.setAttribute("y",P.t);rect.setAttribute("width",W-P.l-P.r);rect.setAttribute("height",H-P.t-P.b);rect.setAttribute("fill","transparent");
+  rect.addEventListener("mousemove",e=>{
+    const box=svg.getBoundingClientRect(); const px=(e.clientX-box.left)/box.width*W;
+    let i=Math.round((px-P.l)/(W-P.l-P.r)*(n-1)); i=Math.max(0,Math.min(n-1,i));
+    const f=fuelMix[i];
+    hoverLine.setAttribute("x1",x(i));hoverLine.setAttribute("x2",x(i));hoverLine.setAttribute("opacity","0.5");
+    let rows='<div class="t-time">'+hhmm(f.t)+' ET · '+fmt(f.total)+' MW</div>';
+    for(const fuel of [...FUEL_ORDER].reverse()){
+      if(f.cats[fuel]==null) continue;
+      rows+='<div class="t-row"><span style="color:'+FUEL_COLORS[fuel]+'">■</span><span style="flex:1;margin-left:4px">'+fuel+'</span><b>'+fmt(f.cats[fuel])+'</b></div>';
+    }
+    showTip(rows, e.clientX, e.clientY);
+  });
+  rect.addEventListener("mouseleave",()=>{hideTip();hoverLine.setAttribute("opacity","0");});
+  svg.append(rect);
+  wrap.append(svg);
+  return wrap;
+}
+
+function buildMethod(D){
+  const factors=Object.entries(D.co2FactorsLbsPerMWh).map(([k,v])=>'<tr><td>'+k+'</td><td class="n">'+v+'</td></tr>').join("");
+  document.getElementById("method").innerHTML = `
+    <p>This page reads three public real-time feeds published by the New York Independent System Operator (NYISO) and updates them on a schedule. Nothing here is modeled or smoothed beyond what is stated below — every number traces back to a NYISO CSV.</p>
+
+    <h4>Data sources</h4>
+    <ul>
+      <li><b>Load (demand):</b> <code>pal</code> feed — actual load by zone, 5-minute resolution. New York City is NYISO Zone J, labeled <code>N.Y.C.</code> Statewide load is the sum of all 11 zones.</li>
+      <li><b>Generation mix:</b> <code>rtfuelmix</code> feed — real-time output by fuel category, 5-minute resolution. <b>This is reported statewide, not per zone.</b> NYISO does not publish a New York City-only fuel mix in real time, so the mix shown reflects all of New York State, including upstate hydro and nuclear that New York City draws on through the transmission system.</li>
+      <li><b>Price:</b> <code>realtime_zone</code> feed — real-time locational-based marginal price (LBMP) by zone, in dollars per megawatt-hour ($/MWh).</li>
+      <li><b>Load forecast:</b> <code>isolf</code> feed — NYISO's own zonal load forecast in MW, hourly. This is the <i>same metric</i> (zonal load) from the <i>same operator</i> as the actual load above, which is why the two can be compared directly. The only difference is cadence: the forecast is hourly and set ahead of time, actual load is every 5 minutes.</li>
+      <li><b>Day-ahead price:</b> <code>damlbmp_zone</code> feed — day-ahead market LBMP by zone ($/MWh, hourly), cleared the evening before. It is the same LBMP definition as the real-time price, so the two compare directly; the gap between them is the difference between what the market expected and what actually happened.</li>
+    </ul>
+    <p><b>On comparators:</b> every comparison on this page is drawn between series that share a definition and a source. Forecast-vs-actual and day-ahead-vs-real-time are both NYISO measuring the same quantity two ways. We deliberately do <i>not</i> overlay outside datasets whose definitions differ — for example, federal U.S. Energy Information Administration (EIA) "demand" is derived differently from NYISO metered "load," and EIA fuel categories (coal, solar, petroleum) do not map onto NYISO's ("Dual Fuel," "Other Fossil Fuels"), so mixing them would mislead.</p>
+
+    <h4>How the headline numbers are built</h4>
+    <ul>
+      <li><b>NYC power draw</b> is the most recent Zone J load reading, in megawatts (MW).</li>
+      <li><b>Share of state</b> = NYC load ÷ statewide load at the same timestamp.</li>
+      <li><b>Wholesale price</b> is the latest Zone J LBMP. The cents-per-kilowatt-hour figure = $/MWh ÷ 10.</li>
+      <li><b>Wholesale spend rate</b> ≈ NYC load (MW) × NYC price ($/MWh) = dollars per hour. The "so far today" total integrates load × price across each 5-minute interval since midnight.</li>
+    </ul>
+
+    <h4>Carbon intensity</h4>
+    <p>Carbon dioxide rate = (Σ generation by fuel × emission factor) ÷ total generation, in pounds of CO₂ per MWh, using the statewide mix. Factors are operational combustion estimates (U.S. Energy Information Administration averages); lifecycle and upstream emissions are excluded. Dual-fuel units are assumed gas-fired.</p>
+    <table><tr><th>Fuel category</th><th class="n">lbs CO₂ / MWh</th></tr>${factors}</table>
+
+    <h4>Important caveats</h4>
+    <ul>
+      <li>Fuel mix is <b>statewide</b>; New York City's in-city generation is predominantly natural gas, so the local mix is dirtier than the statewide figure when imports are constrained.</li>
+      <li>LBMP is the <b>wholesale energy commodity price only.</b> It excludes delivery, capacity, ancillary services and taxes. A retail bill (e.g. Con Edison) is typically more than three times the per-kilowatt-hour wholesale price. The ~30¢/kWh retail comparison is an external approximation, not from NYISO.</li>
+      <li>Feeds are real-time operational data and may be revised by NYISO afterward. Times are U.S. Eastern.</li>
+    </ul>
+    <p>Snapshot generated <code>${D.generatedAt}</code> from source date <code>${D.sourceDate}</code>.</p>
+  `;
+}
+</script>
+</body>
+</html>
