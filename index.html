@@ -377,6 +377,9 @@ function render(D, B, Pk, GC){
     sb.append(gd, od);
     inCity.innerHTML = "<b style='color:var(--orange)'>What's generated inside New York City.</b> The mix above is <b>statewide</b>. Power generated within the five boroughs and Westchester is about <b>"+ic.gasPct+"% natural gas, with 0% nuclear and 0% hydro</b> (EPA eGRID, "+ic.year+"). New York's nuclear and large hydro are all upstate; Indian Point — the only plant near the city — closed in 2021, so the "+fmt(nucNow,1)+"% nuclear shown above does not come from the city's own generation.";
     inCity.append(sb);
+    const ichist = el("div"); ichist.style.cssText="margin-top:6px";
+    ichist.innerHTML = "<b style='color:var(--orange)'>The Indian Point arc.</b> When it ran, the Indian Point nuclear plant just north of the city was widely cited as about a quarter of the electricity used in New York City and Westchester (a figure that is debated, since power can't be metered to a specific load). Its closure in 2021 removed the area's main carbon-free baseload — largely replaced, in the near term, by natural gas.";
+    inCity.append(ichist);
     const ictail = el("div"); ictail.style.cssText="margin-top:6px"; ictail.innerHTML = "This is generation <i>located</i> in the city; New York City also imports a large share of its power, and imported electricity can't be cleanly traced to a specific fuel.";
     inCity.append(ictail);
     mixCard.append(inCity);
