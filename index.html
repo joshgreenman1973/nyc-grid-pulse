@@ -65,7 +65,7 @@
   .stat .note { font-size: 12.5px; color: var(--faint); margin-top: 8px; }
 
   /* layout cards */
-  .grid { display: grid; gap: 18px; }
+  .grid { display: grid; gap: 18px; align-items: start; }
   .cols-2 { grid-template-columns: 1.15fr .85fr; }
   .cols-2b { grid-template-columns: 1fr 1fr; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
@@ -105,11 +105,12 @@
   .mini .v { font-family: var(--mono); font-size: 20px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
 
   /* zone bars */
-  .zbar { display: grid; grid-template-columns: 92px 1fr 70px; align-items: center; gap: 12px; margin: 7px 0; font-size: 13.5px; }
+  .zbar { display: grid; grid-template-columns: 100px 1fr 108px; align-items: center; gap: 12px; margin: 7px 0; font-size: 13.5px; }
   .zbar .zname { color: var(--muted); }
   .zbar .ztrack { background: var(--bg2); border-radius: 6px; height: 22px; position: relative; overflow:hidden; border: 1px solid var(--line); }
   .zbar .zfill { height: 100%; border-radius: 5px 0 0 5px; }
-  .zbar .zval { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .zbar .zval { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; line-height:1.25; }
+  .zbar .zval .znow { display:block; font-size: 11px; color: var(--faint); }
   .zbar.nyc .zname { color: var(--amber); font-weight: 700; }
 
   /* methodology */
@@ -428,27 +429,38 @@ function render(D, B, Pk){
   );
   priceCard.append(pmini);
 
-  // zone comparison bars (now)
+  // zone comparison bars — today's AVERAGE (representative), with the live price as context.
+  // A single real-time snapshot can spike on transient congestion, so the bar uses the daily mean.
   const zoneCard = el("div","card");
-  zoneCard.append(h2("Price by zone right now", "Locations with transmission constraints pay more. New York City and Long Island are load pockets that frequently price above upstate."));
+  zoneCard.append(h2("Price by zone — today's average", "Average real-time price across the day so far, by zone. Long Island and New York City are transmission-constrained load pockets that consistently price above upstate. Real-time prices spike well above these averages during peak demand — the live figure is shown beneath each bar."));
   const lastP = D.price[D.price.length-1].zones;
+  const zStats = {};
+  for(const p of D.price){
+    for(const [k,o] of Object.entries(p.zones||{})){
+      if(o?.lbmp==null) continue;
+      (zStats[k]=zStats[k]||{sum:0,n:0,max:-Infinity}); zStats[k].sum+=o.lbmp; zStats[k].n++; if(o.lbmp>zStats[k].max)zStats[k].max=o.lbmp;
+    }
+  }
   const zoneRows = Object.entries(ZONE_LABELS)
-    .map(([k,label]) => ({k, label, v: lastP[k]?.lbmp}))
-    .filter(z => z.v!=null)
-    .sort((a,b)=>b.v-a.v);
-  const maxZ = Math.max(...zoneRows.map(z=>z.v));
-  const minZ = Math.min(...zoneRows.map(z=>z.v), 0);
-  const rangeZ = maxZ - minZ || 1;
+    .map(([k,label]) => ({k, label, avg: zStats[k]? zStats[k].sum/zStats[k].n : null, now: lastP[k]?.lbmp, max: zStats[k]?.max}))
+    .filter(z => z.avg!=null)
+    .sort((a,b)=>b.avg-a.avg);
+  const maxZ = Math.max(...zoneRows.map(z=>z.avg));
   for(const z of zoneRows){
     const row = el("div","zbar"+(z.k==="N.Y.C."?" nyc":""));
     const track = el("div","ztrack");
     const fill = el("div","zfill");
-    fill.style.width = ((z.v-minZ)/rangeZ*100)+"%";
+    fill.style.width = (z.avg/maxZ*100)+"%";
     fill.style.background = z.k==="N.Y.C." ? cssVar("--amber") : z.k==="LONGIL" ? cssVar("--orange") : cssVar("--blue");
     track.append(fill);
-    row.append(spanT("zname", z.label), track, spanT("zval","$"+fmt(z.v,2)));
+    const val = el("div","zval"); val.innerHTML = "$"+fmt(z.avg,0)+"<span class='znow'>now $"+fmt(z.now,0)+"</span>";
+    row.append(spanT("zname", z.label), track, val);
     zoneCard.append(row);
   }
+  const liMax = zStats["LONGIL"]?.max, nycMax = zStats["N.Y.C."]?.max;
+  const zn = el("div"); zn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
+  zn.innerHTML = "Long Island sits at the end of constrained transmission, so it is consistently the priciest zone — but the gap widens sharply under stress. Today it averaged $"+fmt(zStats["LONGIL"]?.sum/zStats["LONGIL"]?.n,0)+"/MWh and spiked to $"+fmt(liMax,0)+", versus a New York City average of $"+fmt(zStats["N.Y.C."]?.sum/zStats["N.Y.C."]?.n,0)+" (peak $"+fmt(nycMax,0)+") during this week's heat.";
+  zoneCard.append(zn);
 
   const g3 = el("div","grid cols-2"); g3.append(priceCard, zoneCard);
   document.getElementById("root").append(g3);
@@ -457,22 +469,21 @@ function render(D, B, Pk){
   const NYC_POP = 8804190; // 2020 U.S. Census decennial count for New York City
   const AC_WATTS = 1000;   // a typical window air-conditioner
   const acCentsHr = centsKwh!=null ? centsKwh * (AC_WATTS/1000) : null; // 1 kW for 1 hr = 1 kWh
+  const acDollarsDay = acCentsHr!=null ? acCentsHr*24/100 : null;       // same unit, run around the clock
   const perPersonToday = spendToday / NYC_POP;     // wholesale energy cost so far today, per resident
-  const perPersonHrNow = L.nycSpendPerHour!=null ? L.nycSpendPerHour / NYC_POP : null;
 
   const ctx = el("div","card"); ctx.style.marginTop="18px";
   ctx.append(h2("The same numbers, in plain terms", "Wholesale prices and megawatts translated into everyday units. Each figure shows its assumption — these are scale comparisons, not what any one person pays."));
   const ctxFlex = el("div","miniflex");
   ctxFlex.append(
-    mini("Wholesale energy now", fmt(centsKwh,1)+"¢/kWh"),
     mini("Window AC for an hour", acCentsHr!=null ? fmt(acCentsHr,1)+"¢" : "—"),
-    mini("Per New Yorker, so far today", "$"+fmt(perPersonToday,2)),
-    mini("Per New Yorker, per hour now", perPersonHrNow!=null ? fmt(perPersonHrNow*100,1)+"¢" : "—")
+    mini("Window AC running all day", acDollarsDay!=null ? "$"+fmt(acDollarsDay,2) : "—"),
+    mini("Per New Yorker, so far today", "$"+fmt(perPersonToday,2))
   );
   ctx.append(ctxFlex);
   const cn = el("div"); cn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
   cn.innerHTML =
-    "<b>Window AC:</b> a "+AC_WATTS+"-watt unit run for one hour uses 1 kilowatt-hour, so at the current wholesale price that energy costs about "+fmt(acCentsHr,1)+"¢. A real bill runs several times higher — see below. " +
+    "<b>Window AC:</b> a "+AC_WATTS+"-watt unit run for one hour uses 1 kilowatt-hour, so at the current wholesale price of "+fmt(centsKwh,1)+"¢/kWh that energy costs about "+fmt(acCentsHr,1)+"¢ — or about $"+fmt(acDollarsDay,2)+" to run it around the clock. A real bill runs several times higher (see below). " +
     "<b>Per New Yorker:</b> the city's total wholesale energy cost so far today (about $"+fmt(spendToday/1e6,2)+"M) divided by "+fmt(NYC_POP/1e6,2)+" million residents (2020 U.S. Census). " +
     "That spreads the cost of <i>everything</i> the city runs — homes, offices, subways, hospitals — across every person, so it is a scale figure, not an individual bill.";
   ctx.append(cn);
