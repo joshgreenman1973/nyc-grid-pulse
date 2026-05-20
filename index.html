@@ -190,14 +190,19 @@ const tip = document.getElementById("tip");
 function showTip(html, x, y){ tip.innerHTML=html; tip.style.opacity=1; tip.style.left=Math.min(x+14, innerWidth-250)+"px"; tip.style.top=(y+14)+"px"; }
 function hideTip(){ tip.style.opacity=0; }
 function hhmm(t){ const d=t.split("T")[1]; return d.slice(0,5); }
+function pad2(n){ return String(n).padStart(2,"0"); }
 
 function cssVar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || v; }
 
 // ---------- main ----------
 function load(){
-  fetch("data/latest.json?_=" + Date.now())
-    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(D => { document.getElementById("root").innerHTML=""; render(D); })
+  const bust = "?_=" + Date.now();
+  Promise.all([
+    fetch("data/latest.json" + bust).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); }),
+    // baseline.json is built on a slower schedule; treat it as optional
+    fetch("data/baseline.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+  ])
+    .then(([D, B]) => { document.getElementById("root").innerHTML=""; render(D, B); })
     .catch(e => {
       document.getElementById("root").innerHTML =
         '<div class="err">Could not load grid data ('+e.message+'). The snapshot file <code>data/latest.json</code> may not have been generated yet. Run <code>node fetch-data.mjs</code>.</div>';
@@ -207,7 +212,7 @@ load();
 // re-pull the snapshot every 5 minutes so an open tab stays current
 setInterval(load, 5 * 60 * 1000);
 
-function render(D){
+function render(D, B){
   const L = D.latest;
   // ---------- updated line ----------
   const ageMin = Math.max(0, Math.round((Date.now() - new Date(D.generatedAt)) / 60000));
@@ -307,6 +312,37 @@ function render(D){
   const g2 = el("div","grid cols-2b"); g2.append(loadCard, shareCard);
   document.getElementById("root").append(g2);
 
+  // today vs. a normal day (needs baseline.json)
+  if(B && B.typicalDay?.slots?.length){
+    const todaySlots = D.load.filter(l=>l.nyc!=null).map(l=>({slot:hhmm(l.t), v:l.nyc}));
+    const priors = (B.priorYears||[]).filter(p=>p.curve?.length);
+    const bandCard = el("div","card"); bandCard.style.marginTop="18px";
+    bandCard.append(h2("How today compares with a normal day",
+      "New York City load today (solid) against the range of weekdays so far this "+B.typicalDay.monthLabel+" — the shaded band spans the 10th to 90th percentile, the dashed line is the median. Faint lines are the same calendar date in earlier years."));
+    bandCard.append(bandChart(todaySlots, B.typicalDay.slots, priors));
+    // legend
+    const lg=el("div"); lg.style.cssText="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--muted);margin-top:8px";
+    const priorColors=["var(--purple)","var(--lime)","var(--orange)"];
+    let lgHtml='<span><span style="display:inline-block;width:14px;height:3px;background:var(--amber);vertical-align:middle;margin-right:5px"></span>Today</span>'+
+      '<span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--blue);vertical-align:middle;margin-right:5px"></span>Median weekday</span>'+
+      '<span><span style="display:inline-block;width:14px;height:10px;background:var(--blue);opacity:.2;vertical-align:middle;margin-right:5px"></span>Typical range (10th–90th pct)</span>';
+    priors.forEach((p,i)=>{ lgHtml+='<span><span style="display:inline-block;width:14px;height:2px;background:'+priorColors[i%3]+';vertical-align:middle;margin-right:5px"></span>'+p.year+'</span>'; });
+    lg.innerHTML=lgHtml; bandCard.append(lg);
+    // peak comparison stats
+    const bmini=el("div","miniflex");
+    const todayPeak=L.peakNyc.mw;
+    const medianPeak=Math.max(...B.typicalDay.slots.map(s=>s.median));
+    const vsMedian=medianPeak? Math.round((todayPeak/medianPeak-1)*100):null;
+    bmini.append(mini("Today's peak so far", fmt(todayPeak)+" MW"));
+    if(vsMedian!=null) bmini.append(mini("vs median weekday peak", (vsMedian>0?"+":"")+vsMedian+"%"));
+    priors.forEach(p=>bmini.append(mini(p.year+" this date", fmt(p.peakMW)+" MW peak")));
+    bandCard.append(bmini);
+    const cav=el("div"); cav.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
+    cav.innerHTML="Year-to-year and day-to-day differences are driven mostly by <b>weather</b> — hot days push air-conditioning load up sharply — not by an underlying trend. The band reflects this month's actual weekdays, so it widens when the month has included both mild and hot days.";
+    bandCard.append(cav);
+    document.getElementById("root").append(bandCard);
+  }
+
   // ================= WHAT IT COSTS =================
   document.getElementById("root").append(sectionTag("What it costs"));
 
@@ -355,19 +391,35 @@ function render(D){
   const g3 = el("div","grid cols-2"); g3.append(priceCard, zoneCard);
   document.getElementById("root").append(g3);
 
-  // context card: wholesale vs retail
+  // context card: plain-language translations
+  const NYC_POP = 8804190; // 2020 U.S. Census decennial count for New York City
+  const AC_WATTS = 1000;   // a typical window air-conditioner
+  const acCentsHr = centsKwh!=null ? centsKwh * (AC_WATTS/1000) : null; // 1 kW for 1 hr = 1 kWh
+  const perPersonToday = spendToday / NYC_POP;     // wholesale energy cost so far today, per resident
+  const perPersonHrNow = L.nycSpendPerHour!=null ? L.nycSpendPerHour / NYC_POP : null;
+
   const ctx = el("div","card"); ctx.style.marginTop="18px";
-  ctx.append(h2("Putting the price in context", "Wholesale energy is only one slice of a New York City electric bill."));
+  ctx.append(h2("The same numbers, in plain terms", "Wholesale prices and megawatts translated into everyday units. Each figure shows its assumption — these are scale comparisons, not what any one person pays."));
   const ctxFlex = el("div","miniflex");
   ctxFlex.append(
     mini("Wholesale energy now", fmt(centsKwh,1)+"¢/kWh"),
-    mini("Typical Con Edison residential rate", "~30¢/kWh"),
-    mini("Difference", "delivery, capacity, taxes")
+    mini("Window AC for an hour", acCentsHr!=null ? fmt(acCentsHr,1)+"¢" : "—"),
+    mini("Per New Yorker, so far today", "$"+fmt(perPersonToday,2)),
+    mini("Per New Yorker, per hour now", perPersonHrNow!=null ? fmt(perPersonHrNow*100,1)+"¢" : "—")
   );
   ctx.append(ctxFlex);
   const cn = el("div"); cn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
-  cn.innerHTML = "The LBMP shown here is the wholesale energy commodity price set in the NYISO market. A household bill also includes delivery charges, capacity payments, system-benefit charges and taxes, which together typically more than triple the per-kilowatt-hour cost. The ~30¢/kWh figure is an approximate Con Edison residential all-in rate for context and is not from the NYISO feed.";
+  cn.innerHTML =
+    "<b>Window AC:</b> a "+AC_WATTS+"-watt unit run for one hour uses 1 kilowatt-hour, so at the current wholesale price that energy costs about "+fmt(acCentsHr,1)+"¢. A real bill runs several times higher — see below. " +
+    "<b>Per New Yorker:</b> the city's total wholesale energy cost so far today (about $"+fmt(spendToday/1e6,2)+"M) divided by "+fmt(NYC_POP/1e6,2)+" million residents (2020 U.S. Census). " +
+    "That spreads the cost of <i>everything</i> the city runs — homes, offices, subways, hospitals — across every person, so it is a scale figure, not an individual bill.";
   ctx.append(cn);
+
+  // wholesale vs retail honesty note
+  const cn2 = el("div"); cn2.style.cssText="color:var(--faint);font-size:12.5px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px";
+  cn2.innerHTML =
+    "<b>Why your bill is higher:</b> the price here is the wholesale energy commodity only. A household bill also includes delivery, capacity, system-benefit charges and taxes, which together typically more than triple the per-kilowatt-hour cost. New York City residential all-in rates have recently been in the rough range of 25–35¢/kWh — that figure is external context, not from the NYISO feed.";
+  ctx.append(cn2);
   document.getElementById("root").append(ctx);
 
   // ================= CARBON INTENSITY =================
@@ -541,6 +593,61 @@ function lineChart(series, opts){
   return wrap;
 }
 
+// "today vs normal" band chart: today's load over a typical-day band + prior-year overlays.
+// All series share a fixed 00:00-24:00 time-of-day axis. Zero-based y so deviations aren't exaggerated.
+function bandChart(today, band, priors){
+  const W=560,H=240,P={l:48,r:12,t:14,b:26};
+  const ns="http://www.w3.org/2000/svg";
+  const wrap=el("div","chart");
+  const slotMin=s=>{ const [h,m]=s.split(":"); return +h*60+(+m); };
+  const x=mins=>P.l + mins/1440*(W-P.l-P.r);
+  const allMax=Math.max(
+    ...band.map(b=>b.p90),
+    ...priors.flatMap(p=>p.curve.map(c=>c.nyc)),
+    ...today.map(t=>t.v)
+  );
+  const ymax=allMax*1.06;
+  const y=v=>H-P.b-(v/ymax)*(H-P.t-P.b);
+  const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+
+  // y gridlines
+  for(let i=0;i<=4;i++){ const val=ymax*i/4, yy=y(val);
+    const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
+    gl.setAttribute("x1",P.l);gl.setAttribute("x2",W-P.r);gl.setAttribute("y1",yy);gl.setAttribute("y2",yy);svg.append(gl);
+    const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",P.l-8);tx.setAttribute("y",yy+3);tx.setAttribute("text-anchor","end");
+    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");
+    tx.textContent=fmt(val/1000,1)+"k"; svg.append(tx);
+  }
+  for(let hh=0;hh<=24;hh+=4){ const tx=document.createElementNS(ns,"text");
+    tx.setAttribute("x",x(hh*60));tx.setAttribute("y",H-8);tx.setAttribute("text-anchor","middle");
+    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");
+    tx.textContent=pad2(hh)+":00"; svg.append(tx);
+  }
+
+  // p10-p90 band
+  const top=band.map(b=>x(slotMin(b.slot))+","+y(b.p90));
+  const bot=band.slice().reverse().map(b=>x(slotMin(b.slot))+","+y(b.p10));
+  const poly=document.createElementNS(ns,"polygon"); poly.setAttribute("points",top.concat(bot).join(" "));
+  poly.setAttribute("fill","var(--blue)"); poly.setAttribute("opacity","0.13"); svg.append(poly);
+  // median dashed
+  const med=document.createElementNS(ns,"polyline"); med.setAttribute("points",band.map(b=>x(slotMin(b.slot))+","+y(b.median)).join(" "));
+  med.setAttribute("fill","none"); med.setAttribute("stroke","var(--blue)"); med.setAttribute("stroke-width","1.6"); med.setAttribute("stroke-dasharray","5 4"); med.setAttribute("opacity","0.8"); svg.append(med);
+  // prior years (thin, faint)
+  const priorColors=["var(--purple)","var(--lime)","var(--orange)"];
+  priors.forEach((p,i)=>{ const pl=document.createElementNS(ns,"polyline");
+    pl.setAttribute("points",p.curve.map(c=>x(slotMin(c.slot))+","+y(c.nyc)).join(" "));
+    pl.setAttribute("fill","none"); pl.setAttribute("stroke",priorColors[i%3]); pl.setAttribute("stroke-width","1.2"); pl.setAttribute("opacity","0.5"); svg.append(pl);
+  });
+  // today (bold)
+  const td=document.createElementNS(ns,"polyline"); td.setAttribute("points",today.map(t=>x(slotMin(t.slot))+","+y(t.v)).join(" "));
+  td.setAttribute("fill","none"); td.setAttribute("stroke","var(--amber)"); td.setAttribute("stroke-width","2.6"); td.setAttribute("stroke-linejoin","round"); svg.append(td);
+  const last=today[today.length-1];
+  if(last){ const dot=document.createElementNS(ns,"circle"); dot.setAttribute("cx",x(slotMin(last.slot))); dot.setAttribute("cy",y(last.v)); dot.setAttribute("r",3.8); dot.setAttribute("fill","var(--amber)"); svg.append(dot); }
+
+  wrap.append(svg);
+  return wrap;
+}
+
 // stacked area for fuel mix
 function stackedArea(fuelMix){
   const W=560,H=220,P={l:48,r:12,t:14,b:26};
@@ -624,6 +731,16 @@ function buildMethod(D){
       <li><b>Share of state</b> = NYC load ÷ statewide load at the same timestamp.</li>
       <li><b>Wholesale price</b> is the latest Zone J LBMP. The cents-per-kilowatt-hour figure = $/MWh ÷ 10.</li>
       <li><b>Wholesale spend rate</b> ≈ NYC load (MW) × NYC price ($/MWh) = dollars per hour. The "so far today" total integrates load × price across each 5-minute interval since midnight.</li>
+    </ul>
+
+    <h4>Historical comparison ("a normal day")</h4>
+    <p>The "how today compares" chart uses NYISO's archived <code>pal</code> files, which are byte-identical to the live feed. The shaded band is the 10th–90th percentile of New York City load for every <b>weekday</b> of the current month so far (today excluded), computed per 5-minute slot; the dashed line is the median. Weekday-only because weekend load is structurally lower. Each archived reading is bucketed to its 5-minute slot and averaged within the day so all days align to a 288-slot grid. Prior-year lines are the same calendar date in earlier years, pulled from NYISO's monthly archive ZIPs. Year-to-year and day-to-day swings are driven mostly by weather, not a trend.</p>
+
+    <h4>Plain-language conversions</h4>
+    <ul>
+      <li><b>Window AC for an hour:</b> assumes a 1,000-watt unit; one hour = 1 kilowatt-hour, costed at the current wholesale price. Wholesale energy only.</li>
+      <li><b>Per New Yorker:</b> the city's total wholesale energy cost (load × price integrated over the day) divided by 8,804,190 residents (2020 U.S. Census). This spreads the cost of all city electricity use — residential, commercial, transit, industrial — across every person, so it is a scale comparison, not an individual bill.</li>
+      <li>The residential all-in rate range (25–35¢/kWh) is external context for why retail bills exceed wholesale; it is not from the NYISO feed.</li>
     </ul>
 
     <h4>Carbon intensity</h4>

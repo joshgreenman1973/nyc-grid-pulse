@@ -1,0 +1,34 @@
+name: Rebuild historical baseline
+
+# Rebuilds data/baseline.json (typical-weekday band + prior-year same-date curves).
+# Daily is plenty — the band shifts slowly as the month accumulates weekdays.
+
+on:
+  schedule:
+    - cron: "20 6 * * *"   # 06:20 UTC daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build baseline
+        run: node build-baseline.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/baseline.json
+          if git diff --staged --quiet; then
+            echo "No change in baseline."
+          else
+            git commit -m "Rebuild historical baseline [skip ci]"
+            git push
+          fi
