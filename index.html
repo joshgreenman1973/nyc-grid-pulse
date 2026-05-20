@@ -124,6 +124,20 @@
   .gcrow.hl .gctrack { border-color: var(--amber); }
   .gcval { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; font-size: 13.5px; }
 
+  .lead { border-color: rgba(249,115,98,.35); background: linear-gradient(180deg, rgba(249,115,98,.05), var(--panel)); }
+  .dsstats { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 18px; }
+  .dsstat { flex: 1; min-width: 130px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .dsstat .v { font-family: var(--mono); font-size: 30px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
+  .dsstat .k { font-size: 12px; color: var(--muted); margin-top: 7px; }
+  .dsbar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); margin-top: 4px; }
+  .dsbar > div { min-width: 1px; }
+  .dslegend { display: flex; flex-wrap: wrap; gap: 9px 18px; margin-top: 13px; font-size: 12.5px; }
+  .dslegend .li { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .dslegend .sw { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .dslegend .mw { font-family: var(--mono); color: var(--faint); }
+  .solarnote { background: rgba(163,230,53,.07); border: 1px solid rgba(163,230,53,.28); border-radius: 10px; padding: 11px 13px; font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+  .solarnote b { color: var(--lime); }
+
   /* methodology */
   details.method { margin-top: 30px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px; }
   details.method summary { cursor: pointer; padding: 16px 0; font-weight: 600; font-size: 15px; list-style: none; }
@@ -304,6 +318,38 @@ function render(D, B, Pk, GC){
   // ================= WHERE THE POWER COMES FROM =================
   document.getElementById("root").append(sectionTag("Where the power comes from"));
 
+  // ---- LEAD: downstate (NYC region) mix — the most representative picture ----
+  if(GC && GC.downstate){
+    const ds = GC.downstate;
+    const DS_COLORS = {"Dual fuel (gas/oil)":"#f59e0b","Natural gas":"#fb923c","Oil":"#f97362","Hydro":"#38bdf8","Waste energy":"#8492ab","Solar":"#a3e635","Offshore wind":"#34d399"};
+    const lead = el("div","card lead");
+    lead.append(h2("How the New York City region is actually powered",
+      "Energy produced in NYISO's downstate region (Zones F–K — New York City, Long Island and the lower Hudson Valley) in "+ds.year+", from the NYISO Power Trends report. This is far more representative of the city than the statewide mix below, where the carbon-free generation is mostly upstate."));
+    const stats = el("div","dsstats");
+    const mk = (v,k,color)=>{ const d=el("div","dsstat"); const a=el("div","v"); a.textContent=v; a.style.color=color; const b=el("div","k"); b.textContent=k; d.append(a,b); return d; };
+    stats.append(
+      mk(ds.fossilPct+"%","fossil fuel","var(--red)"),
+      mk(ds.nuclearPct+"%","nuclear","var(--purple)"),
+      mk(ds.zeroEmissionPct+"%","zero-emission","var(--green)")
+    );
+    lead.append(stats);
+    const bar = el("div","dsbar");
+    for(const m of ds.mix){ const seg=el("div"); seg.style.width=m.pct+"%"; seg.style.background=DS_COLORS[m.fuel]||"var(--line)"; seg.title=m.fuel+": "+fmt(m.pct,1)+"%"; bar.append(seg); }
+    lead.append(bar);
+    const leg = el("div","dslegend");
+    for(const m of ds.mix){ const li=el("div","li"); const sw=el("span","sw"); sw.style.background=DS_COLORS[m.fuel]||"var(--line)"; const t=document.createElement("span"); t.innerHTML=m.fuel+" <span class='mw'>"+fmt(m.pct,1)+"% · "+fmt(m.gwh)+" GWh</span>"; li.append(sw,t); leg.append(li); }
+    lead.append(leg);
+    const dsc = el("div"); dsc.style.cssText="color:var(--faint);font-size:12.5px;margin-top:13px";
+    dsc.innerHTML = "Roughly <b>"+ds.fossilPct+"% fossil and "+ds.zeroEmissionPct+"% zero-emission</b>, with <b>no nuclear</b> — versus <b>"+ds.statewideZeroEmissionPct+"% zero-emission statewide</b>. Transmission constraints limit how much of upstate's clean power reaches the city. Total downstate production "+fmt(ds.totalGWh)+" GWh in "+ds.year+". Annual figures, not real-time. Source: "+ds.source;
+    lead.append(dsc);
+    if(GC.nycSolar){
+      const s=GC.nycSolar; const sn=el("div","solarnote");
+      sn.innerHTML = "<b>Solar is growing.</b> New York City had about <b>"+fmt(s.installedMW)+" MW</b> of solar installed citywide in "+s.year+" — roughly "+fmt(s.installedMW/s.goalMW*100,0)+"% of the city's goal of <b>"+fmt(s.goalMW/1000,0)+" gigawatt ("+fmt(s.goalMW)+" MW) by "+s.goalYear+"</b>, generating about "+fmt(s.generationGWh)+" GWh that year. "+s.note+" Source: "+s.source;
+      lead.append(sn);
+    }
+    document.getElementById("root").append(lead);
+  }
+
   const cats = L.fuelCats;
   const total = L.genTotalMW;
   const ordered = FUEL_ORDER.filter(f => cats[f]!=null).map(f => ({name:f, mw:cats[f], pct: cats[f]/total*100}));
@@ -312,7 +358,7 @@ function render(D, B, Pk, GC){
 
   const mixCard = el("div","card");
   const mixHead = el("div"); mixHead.style.cssText="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap";
-  mixHead.append(h2("Statewide generation mix", "Power generated across New York State right now (left) and through the day (right), by fuel — totals "+fmt(total)+" MW. NYISO reports fuel mix statewide, not per zone."));
+  mixHead.append(h2("Statewide generation mix (the live feed)", "The only fuel mix NYISO publishes in real time is statewide — shown right now (left) and through the day (right), totaling "+fmt(total)+" MW. It looks cleaner than the downstate picture above because New York's nuclear and hydro sit upstate."));
   const toggle = el("div","toggle");
   const bToday = el("button"); bToday.textContent="As generated"; bToday.className="active";
   const bIP = el("button"); bIP.textContent="If Indian Point ran";
@@ -942,6 +988,9 @@ function buildMethod(D){
 
     <h4>Indian Point toggle (illustrative)</h4>
     <p>The "if Indian Point ran" toggle on the generation mix is a counterfactual, clearly labeled as such. It adds 2,060 MW of nuclear — the net summer capacity of the retired Indian Point Energy Center (Unit 2 ~1,020 MW, retired April 30, 2020; Unit 3 ~1,040 MW, retired April 30, 2021, per the U.S. Energy Information Administration) — and removes an equal amount of fossil generation proportionally across natural gas, dual-fuel and other fossil fuels, holding total generation equal to demand. Nuclear plants run as baseload near full output around the clock, so adding the full capacity is a reasonable illustration of scale. It is <i>not</i> a precise simulation: in reality the market would have dispatched plants differently, and prices and interchange would differ. Capacity and dates are verified facts; the displacement is the stated assumption.</p>
+
+    <h4>Downstate generation mix and city solar</h4>
+    <p>The lead "how the New York City region is actually powered" figures come from the NYISO 2025 Power Trends report, Figure 23 (2024 energy production), for the downstate region — NYISO Zones F through K, which cover New York City, Long Island and the lower Hudson Valley. These are annual figures, not real-time, and represent energy <i>produced</i> in the downstate region; the region also receives power over transmission from upstate and neighboring grids. The statewide live mix is shown separately because it is the only fuel mix NYISO publishes in real time. The citywide solar figures (about 641.5 MW installed in 2025, against a 1-gigawatt-by-2030 citywide goal) come from the New York City Independent Budget Office's December 2025 Solar Power Progress Report; that citywide goal is distinct from the Local Law 99 mandate of 100 MW on city-owned buildings.</p>
 
     <h4>Grid carbon intensity by city</h4>
     <p>Carbon intensity (grams of CO₂ per kWh) is a grid-level quantity, so each city is mapped to the grid it sits on. U.S. cities use their U.S. EPA eGRID2023 subregion CO₂ total output emission rate (lb/MWh, converted at 0.4536 g/kWh per lb/MWh) — the most local official figure; New York City has its own subregion (NYC/Westchester), while others such as Chicago's (RFC West) span multiple states, so a city's own utility may differ. International cities use their national grid's CO₂ intensity of generation from Our World in Data (Ember / Energy Institute), 2024. These are annual averages from two source families and are not directly comparable to the real-time, statewide figure shown in the carbon-intensity card above. New York City's local subregion is unusually gas-heavy (~98% of in-city generation), which is why it ranks high.</p>

@@ -4,6 +4,33 @@
   "usSource": "U.S. EPA eGRID2023 subregion CO2 total output emission rate (lb/MWh), converted at 0.4536 g/kWh per lb/MWh. Released 2025; reflects 2023 generation.",
   "intlSource": "Our World in Data, from Ember and the Energy Institute Statistical Review of World Energy — CO2 intensity of electricity generation, 2024.",
   "caveat": "Carbon intensity is defined at the grid level, not the city level. U.S. cities are mapped to their EPA eGRID subregion (the most local official figure available); NYC has its own subregion (NYC/Westchester), but others (e.g. RFC West for Chicago) are large multi-state regions, so a city's actual utility may be cleaner or dirtier. International figures are national grids, the most local available. These are annual averages and use slightly different methodologies across the two sources; the live figure elsewhere on this page is real-time and statewide, not directly comparable.",
+  "downstate": {
+    "source": "NYISO 2025 Power Trends, Figure 23 — 2024 energy production, downstate (Zones F–K: New York City, Long Island and the lower Hudson Valley region).",
+    "year": 2024,
+    "totalGWh": 64402,
+    "fossilPct": 93,
+    "zeroEmissionPct": 5,
+    "nuclearPct": 0,
+    "statewideZeroEmissionPct": 48,
+    "mix": [
+      {"fuel": "Dual fuel (gas/oil)", "gwh": 53520, "pct": 83.1, "fossil": true},
+      {"fuel": "Natural gas", "gwh": 6532, "pct": 10.1, "fossil": true},
+      {"fuel": "Hydro", "gwh": 2151, "pct": 3.3, "fossil": false},
+      {"fuel": "Waste energy", "gwh": 1500, "pct": 2.3, "fossil": false},
+      {"fuel": "Solar", "gwh": 439, "pct": 0.7, "fossil": false},
+      {"fuel": "Offshore wind", "gwh": 191, "pct": 0.3, "fossil": false},
+      {"fuel": "Oil", "gwh": 69, "pct": 0.1, "fossil": true}
+    ]
+  },
+  "nycSolar": {
+    "source": "New York City Independent Budget Office, Solar Power Progress Report, December 2025.",
+    "installedMW": 641.5,
+    "year": 2025,
+    "goalMW": 1000,
+    "goalYear": 2030,
+    "generationGWh": 714,
+    "note": "Citywide installed solar capacity (all rooftops and sites), against the de Blasio/Hochul goal of 1 gigawatt (1,000 MW) citywide by 2030 — not codified in law. Separate from the Local Law 99 mandate of 100 MW on city-owned buildings by 2030 (about 31 MW installed)."
+  },
   "nycInCity": {
     "source": "U.S. EPA eGRID2023, NYC/Westchester (NYCW) subregion resource mix",
     "year": 2023,
