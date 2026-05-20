@@ -337,6 +337,12 @@ function render(D, B, Pk){
   bIP.onclick=()=>{ bIP.className="active"; bToday.className=""; drawMix(true); };
   drawMix(false);
 
+  // CLCPA policy context (static; persists across the toggle)
+  const renPct = total ? ((L.fuelCats["Hydro"]||0)+(L.fuelCats["Wind"]||0)+(L.fuelCats["Other Renewables"]||0))/total*100 : null;
+  const clcpa = el("div"); clcpa.style.cssText="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.25);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:16px";
+  clcpa.innerHTML = "<b style='color:var(--green)'>State climate law.</b> New York's Climate Leadership and Community Protection Act (2019) requires 70% of electricity from <b>renewable</b> sources by 2030 and a 100% <b>zero-emission</b> grid by 2040. The 70% goal counts renewables only — wind, solar and hydro, about "+fmt(renPct,0)+"% of statewide generation right now — while the carbon-free share above also includes nuclear. In 2024 state regulators signaled the 2030 renewable target is likely to slip.";
+  mixCard.append(clcpa);
+
   // stacked area of fuel mix over the day
   const areaCard = el("div","card");
   areaCard.append(h2("Generation mix through the day", "Stacked output by fuel since midnight, 5-minute resolution. Hover for the breakdown at any moment."));
