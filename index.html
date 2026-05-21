@@ -318,14 +318,22 @@ function render(D, B, Pk, GC){
   // ================= WHERE THE POWER COMES FROM =================
   document.getElementById("root").append(sectionTag("Where the power comes from"));
 
-  // ---- LEAD: downstate (NYC region) mix — the most representative picture ----
+  // ---- LEAD: downstate (NYC region) mix — the primary picture, with the marquee donut ----
   if(GC && GC.downstate){
     const ds = GC.downstate;
     const DS_COLORS = {"Dual fuel (gas/oil)":"#f59e0b","Natural gas":"#fb923c","Oil":"#f97362","Hydro":"#38bdf8","Waste energy":"#8492ab","Solar":"#a3e635","Offshore wind":"#34d399"};
+    const dsOrdered = ds.mix.map(m=>({name:m.fuel, mw:m.gwh, pct:m.pct}));
     const lead = el("div","card lead");
     lead.append(h2("How the New York City region is actually powered",
-      "Energy produced in NYISO's downstate region (Zones F–K — New York City, Long Island and the lower Hudson Valley) in "+ds.year+", from the NYISO Power Trends report. This is far more representative of the city than the statewide mix below, where the carbon-free generation is mostly upstate."));
-    const stats = el("div","dsstats");
+      "Energy produced in NYISO's downstate region (Zones F–K — New York City, Long Island and the lower Hudson Valley) in "+ds.year+", from the NYISO Power Trends report. This is the most representative picture of the city's power; the statewide live feed below runs cleaner only because New York's nuclear and hydro sit upstate."));
+    // marquee: donut + legend
+    const top = el("div","mix");
+    const dleft = el("div"); dleft.style.cssText="display:flex;justify-content:center";
+    dleft.append(donut(dsOrdered, ds.totalGWh, ds.zeroEmissionPct, {colors:DS_COLORS, unit:"GWh", centerCap:"zero-emission"}));
+    top.append(dleft, legend(dsOrdered, ds.totalGWh, {colors:DS_COLORS, unit:"GWh"}));
+    lead.append(top);
+    // supporting stat tiles
+    const stats = el("div","dsstats"); stats.style.marginTop="20px";
     const mk = (v,k,color)=>{ const d=el("div","dsstat"); const a=el("div","v"); a.textContent=v; a.style.color=color; const b=el("div","k"); b.textContent=k; d.append(a,b); return d; };
     stats.append(
       mk(ds.fossilPct+"%","fossil fuel","var(--red)"),
@@ -333,13 +341,7 @@ function render(D, B, Pk, GC){
       mk(ds.zeroEmissionPct+"%","zero-emission","var(--green)")
     );
     lead.append(stats);
-    const bar = el("div","dsbar");
-    for(const m of ds.mix){ const seg=el("div"); seg.style.width=m.pct+"%"; seg.style.background=DS_COLORS[m.fuel]||"var(--line)"; seg.title=m.fuel+": "+fmt(m.pct,1)+"%"; bar.append(seg); }
-    lead.append(bar);
-    const leg = el("div","dslegend");
-    for(const m of ds.mix){ const li=el("div","li"); const sw=el("span","sw"); sw.style.background=DS_COLORS[m.fuel]||"var(--line)"; const t=document.createElement("span"); t.innerHTML=m.fuel+" <span class='mw'>"+fmt(m.pct,1)+"% · "+fmt(m.gwh)+" GWh</span>"; li.append(sw,t); leg.append(li); }
-    lead.append(leg);
-    const dsc = el("div"); dsc.style.cssText="color:var(--faint);font-size:12.5px;margin-top:13px";
+    const dsc = el("div"); dsc.style.cssText="color:var(--faint);font-size:12.5px;margin-top:14px";
     dsc.innerHTML = "Roughly <b>"+ds.fossilPct+"% fossil and "+ds.zeroEmissionPct+"% zero-emission</b>, with <b>no nuclear</b> — versus <b>"+ds.statewideZeroEmissionPct+"% zero-emission statewide</b>. Transmission constraints limit how much of upstate's clean power reaches the city. Total downstate production "+fmt(ds.totalGWh)+" GWh in "+ds.year+". Annual figures, not real-time. Source: "+ds.source;
     lead.append(dsc);
     if(GC.nycSolar){
@@ -350,53 +352,44 @@ function render(D, B, Pk, GC){
     document.getElementById("root").append(lead);
   }
 
-  const cats = L.fuelCats;
   const total = L.genTotalMW;
-  const ordered = FUEL_ORDER.filter(f => cats[f]!=null).map(f => ({name:f, mw:cats[f], pct: cats[f]/total*100}));
-  const cleanMW = ordered.filter(o=>CLEAN.has(o.name)).reduce((a,b)=>a+b.mw,0);
-  const fossilMW = total - cleanMW;
 
   const mixCard = el("div","card");
   const mixHead = el("div"); mixHead.style.cssText="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap";
-  mixHead.append(h2("Statewide generation mix (the live feed)", "The only fuel mix NYISO publishes in real time is statewide — shown right now (left) and through the day (right), totaling "+fmt(total)+" MW. It looks cleaner than the downstate picture above because New York's nuclear and hydro sit upstate."));
+  mixHead.append(h2("Statewide mix, live", "For reference: the only fuel mix NYISO publishes in real time is statewide ("+fmt(total)+" MW now, through the day at right). It runs cleaner than the downstate picture above because the state's nuclear and hydro are upstate."));
   const toggle = el("div","toggle");
   const bToday = el("button"); bToday.textContent="As generated"; bToday.className="active";
   const bIP = el("button"); bIP.textContent="If Indian Point ran";
   toggle.append(bToday, bIP); mixHead.append(toggle);
   mixCard.append(mixHead);
 
-  // top: donut+legend (left) and through-the-day chart (right), balanced heights
+  // compact: live mix (left, no donut) + through-the-day chart (right)
   const topGrid = el("div","gentop");
-  const mixBody = el("div");
+  const liveBody = el("div");
   const dayCol = el("div");
   dayCol.append(h4mini("Through the day (since midnight, hover for detail)"));
   dayCol.append(stackedArea(D.fuelMix));
-  topGrid.append(mixBody, dayCol);
+  topGrid.append(liveBody, dayCol);
   mixCard.append(topGrid);
 
-  // full-width below both columns
-  const splitBox = el("div");
   const ipNote = el("div","ipnote"); ipNote.style.display="none";
-  mixCard.append(splitBox, ipNote);
+  mixCard.append(ipNote);
 
   const actualStats = mixStats(L.fuelCats, D.co2FactorsLbsPerMWh, CLEAN);
   function drawMix(withIP){
-    mixBody.innerHTML=""; splitBox.innerHTML="";
+    liveBody.innerHTML="";
     const cats = withIP ? withIndianPoint(L.fuelCats) : L.fuelCats;
     const st = mixStats(cats, D.co2FactorsLbsPerMWh, CLEAN);
     const ord = FUEL_ORDER.filter(f=>cats[f]!=null && cats[f]>0).map(f=>({name:f, mw:cats[f], pct:cats[f]/st.total*100}));
-    const mix = el("div","mix");
-    mix.append(donut(ord, st.total, st.cleanPct), legend(ord, st.total));
-    mixBody.append(mix);
-    const split = el("div"); split.style.marginTop="20px";
-    split.append(h4mini("Carbon-free vs fossil generation"));
-    const sb = el("div","splitbar");
-    const cleanDiv = el("div"); cleanDiv.style.width=(st.cleanMW/st.total*100)+"%"; cleanDiv.style.background=cssVar("--green"); cleanDiv.textContent=fmt(st.cleanPct,0)+"% carbon-free";
-    const fosDiv = el("div"); fosDiv.style.width=(st.fossilMW/st.total*100)+"%"; fosDiv.style.background=cssVar("--orange"); fosDiv.style.color="#1a1206"; fosDiv.textContent=fmt(st.fossilMW/st.total*100,0)+"% fossil";
-    sb.append(cleanDiv, fosDiv); split.append(sb);
-    const sn = el("div"); sn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:8px";
-    sn.innerHTML = "Carbon-free = nuclear + hydro + wind + other renewables ("+fmt(st.cleanMW)+" MW). Fossil = natural gas + dual-fuel + other fossil fuels ("+fmt(st.fossilMW)+" MW).";
-    split.append(sn); splitBox.append(split);
+    const head = el("div"); head.style.cssText="font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-1px;line-height:1";
+    head.innerHTML = fmt(st.cleanPct,0)+'%<span style="font-size:13px;color:var(--muted);font-weight:400;letter-spacing:0"> carbon-free · '+fmt(st.fossilMW/st.total*100,0)+'% fossil</span>';
+    liveBody.append(head);
+    const bar = el("div","dsbar"); bar.style.marginTop="12px";
+    for(const o of ord){ const seg=el("div"); seg.style.width=o.pct+"%"; seg.style.background=FUEL_COLORS[o.name]||"var(--line)"; seg.title=o.name+" "+fmt(o.pct,1)+"%"; bar.append(seg); }
+    liveBody.append(bar);
+    const leg = el("div","dslegend"); leg.style.marginTop="11px";
+    for(const o of ord){ const li=el("div","li"); const sw=el("span","sw"); sw.style.background=FUEL_COLORS[o.name]||"var(--line)"; const t=document.createElement("span"); t.innerHTML=o.name+" <span class='mw'>"+fmt(o.pct,1)+"%</span>"; li.append(sw,t); leg.append(li); }
+    liveBody.append(leg);
     if(withIP){
       ipNote.style.display="";
       ipNote.innerHTML = "<b>Illustrative — Indian Point retired 2020–2021.</b> The Indian Point nuclear plant near New York City (Unit 2 ~1,020 MW, retired April 30 2020; Unit 3 ~1,040 MW, retired April 30 2021; ~2,060 MW net total, per the U.S. Energy Information Administration) ran around the clock as baseload. Restoring its output and displacing an equal amount of fossil generation would lift the statewide carbon-free share from <b>"+fmt(actualStats.cleanPct,1)+"%</b> to <b>"+fmt(st.cleanPct,1)+"%</b> and cut the grid's carbon intensity from <b>"+fmt(actualStats.co2Rate,0)+"</b> to <b>"+fmt(st.co2Rate,0)+"</b> lbs CO₂/MWh right now. This shows the scale of the lost carbon-free supply; the real grid would have dispatched other plants differently.";
@@ -710,10 +703,15 @@ function statCard(label, big, unit, color, note){
   c.append(l,b,n); return c;
 }
 
-function donut(ordered, total, cleanPct){
-  const size=200, r=82, cx=100, cy=100, sw=26, C=2*Math.PI*r;
+function donut(ordered, total, cleanPct, opts={}){
+  const colors = opts.colors || FUEL_COLORS;
+  const unit = opts.unit || "MW";
+  const cap = opts.centerCap || "carbon-free";
+  const big = !!opts.big;
+  const size = big ? 230 : 200;
+  const r=82, cx=100, cy=100, sw=26, C=2*Math.PI*r;
   const ns="http://www.w3.org/2000/svg";
-  const wrap=el("div","donut-wrap");
+  const wrap=el("div","donut-wrap"); if(big){ wrap.style.width=size+"px"; wrap.style.height=size+"px"; }
   const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 200 200"); svg.style.width=size+"px"; svg.style.height=size+"px";
   let off=0;
   const bg=document.createElementNS(ns,"circle"); bg.setAttribute("cx",cx); bg.setAttribute("cy",cy); bg.setAttribute("r",r);
@@ -722,29 +720,31 @@ function donut(ordered, total, cleanPct){
     const frac=o.mw/total;
     const arc=document.createElementNS(ns,"circle");
     arc.setAttribute("cx",cx); arc.setAttribute("cy",cy); arc.setAttribute("r",r);
-    arc.setAttribute("fill","none"); arc.setAttribute("stroke",FUEL_COLORS[o.name]); arc.setAttribute("stroke-width",sw);
+    arc.setAttribute("fill","none"); arc.setAttribute("stroke",colors[o.name]||"var(--line)"); arc.setAttribute("stroke-width",sw);
     arc.setAttribute("stroke-dasharray", (frac*C)+" "+C);
     arc.setAttribute("stroke-dashoffset", -off*C);
     arc.setAttribute("transform","rotate(-90 "+cx+" "+cy+")");
     arc.style.cursor="pointer";
-    arc.addEventListener("mousemove",e=>showTip('<div class="t-time">'+o.name+'</div><div class="t-row"><span>'+fmt(o.mw)+' MW</span><b>'+fmt(o.pct,1)+'%</b></div>', e.clientX, e.clientY));
+    arc.addEventListener("mousemove",e=>showTip('<div class="t-time">'+o.name+'</div><div class="t-row"><span>'+fmt(o.mw)+' '+unit+'</span><b>'+fmt(o.pct,1)+'%</b></div>', e.clientX, e.clientY));
     arc.addEventListener("mouseleave",hideTip);
     svg.append(arc); off+=frac;
   }
   wrap.append(svg);
   const center=el("div","donut-center");
-  center.innerHTML='<div class="pct">'+fmt(cleanPct,0)+'%</div><div class="cap">carbon-free</div>';
+  center.innerHTML='<div class="pct">'+fmt(cleanPct,0)+'%</div><div class="cap">'+cap+'</div>';
   wrap.append(center);
   return wrap;
 }
 
-function legend(ordered, total){
+function legend(ordered, total, opts={}){
+  const colors = opts.colors || FUEL_COLORS;
+  const unit = opts.unit || "MW";
   const w=el("div","legend");
   for(const o of ordered){
     const row=el("div","legrow");
-    const sw=el("div","swatch"); sw.style.background=FUEL_COLORS[o.name];
+    const sw=el("div","swatch"); sw.style.background=colors[o.name]||"var(--line)";
     const nm=el("div"); nm.textContent=o.name;
-    const mw=el("div","mw"); mw.textContent=fmt(o.mw)+" MW";
+    const mw=el("div","mw"); mw.textContent=fmt(o.mw)+" "+unit;
     const pct=el("div","pct"); pct.textContent=fmt(o.pct,1)+"%";
     row.append(sw,nm,mw,pct); w.append(row);
   }
