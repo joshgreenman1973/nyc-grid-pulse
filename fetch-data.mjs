@@ -30,11 +30,19 @@ const CO2_LBS_PER_MWH = {
 
 const CLEAN_CATEGORIES = new Set(["Nuclear", "Hydro", "Wind", "Other Renewables"]);
 
-function yyyymmdd(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}${m}${day}`;
+// NYISO publishes its CSV files by Eastern (America/New_York) date, while the
+// GitHub Actions runner's clock is UTC. Deriving the date from UTC asks NYISO
+// for "tomorrow's" file between 8pm and midnight Eastern -> 404. Always build
+// the date string in Eastern time.
+function easternYmd(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (t) => parts.find((p) => p.type === t).value;
+  return `${get("year")}${get("month")}${get("day")}`;
 }
 
 async function getCsv(url) {
@@ -73,11 +81,8 @@ function parseTs(s) {
   return `${yyyy}-${mm}-${dd}T${time}`;
 }
 
-async function main() {
-  const now = new Date();
-  const D = yyyymmdd(now);
-
-  const [fuelTxt, loadTxt, priceTxt, forecastTxt, daPriceTxt] = await Promise.all([
+function fetchFeeds(D) {
+  return Promise.all([
     getCsv(`https://mis.nyiso.com/public/csv/rtfuelmix/${D}rtfuelmix.csv`),
     getCsv(`https://mis.nyiso.com/public/csv/pal/${D}pal.csv`),
     getCsv(`https://mis.nyiso.com/public/csv/realtime/${D}realtime_zone.csv`),
@@ -86,6 +91,25 @@ async function main() {
     // damlbmp = day-ahead market LBMP by zone ($/MWh, hourly). Same definition as real-time LBMP.
     getCsv(`https://mis.nyiso.com/public/csv/damlbmp/${D}damlbmp_zone.csv`),
   ]);
+}
+
+async function main() {
+  // Right after Eastern midnight NYISO may not have posted the new day's files
+  // yet, so fall back to the prior Eastern day until they appear.
+  let D = easternYmd();
+  let feeds;
+  try {
+    feeds = await fetchFeeds(D);
+  } catch (e) {
+    if (/^404\b/.test(e.message)) {
+      D = easternYmd(new Date(Date.now() - 86_400_000));
+      console.warn(`Today's NYISO files not posted yet; falling back to ${D}`);
+      feeds = await fetchFeeds(D);
+    } else {
+      throw e;
+    }
+  }
+  const [fuelTxt, loadTxt, priceTxt, forecastTxt, daPriceTxt] = feeds;
 
   // ---- fuel mix: group by timestamp ----
   const fuelRows = parseCsv(fuelTxt).slice(1);
