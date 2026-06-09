@@ -342,7 +342,7 @@ function render(D, B, Pk, GC){
     );
     lead.append(stats);
     const dsc = el("div"); dsc.style.cssText="color:var(--faint);font-size:12.5px;margin-top:14px";
-    dsc.innerHTML = "Roughly <b>"+ds.fossilPct+"% fossil and "+ds.zeroEmissionPct+"% zero-emission</b>, with <b>no nuclear</b> — versus <b>"+ds.statewideZeroEmissionPct+"% zero-emission statewide</b>. Transmission constraints limit how much of upstate's clean power reaches the city. Total downstate production "+fmt(ds.totalGWh)+" GWh in "+ds.year+". Annual figures, not real-time. Source: "+ds.source;
+    dsc.innerHTML = "Roughly <b>"+ds.fossilPct+"% fossil and "+ds.zeroEmissionPct+"% zero-emission</b>, with <b>no nuclear</b> — versus <b>"+ds.statewideZeroEmissionPct+"% zero-emission statewide</b>. Transmission constraints limit how much of upstate's clean power reaches the city. Total downstate production "+fmt(ds.totalGWh)+" GWh in "+ds.year+". Annual figures, not real-time. These are "+ds.year+" figures and predate the Champlain Hudson Power Express (see below), which began delivering Canadian hydropower to the city in June 2026. Source: "+ds.source;
     lead.append(dsc);
     if(GC.nycSolar){
       const s=GC.nycSolar; const sn=el("div","solarnote");
@@ -350,6 +350,21 @@ function render(D, B, Pk, GC){
       lead.append(sn);
     }
     document.getElementById("root").append(lead);
+
+    // ---- Champlain Hudson Power Express: imported hydro the live mix can't see ----
+    const chpe = el("div","card");
+    chpe.append(h2("The new Canadian hydro line — and why it doesn't show in the mix above",
+      "The Champlain Hudson Power Express (CHPE), a 1,250 MW (1.25 GW) high-voltage line carrying Hydro-Québec hydropower to a converter station in Astoria, Queens, began commercial operation in June 2026."));
+    const cb = el("div"); cb.style.cssText="color:var(--muted);font-size:13px;line-height:1.55";
+    cb.innerHTML = "CHPE can supply roughly <b>20% of New York City's electricity demand</b> — equivalent to about a million homes — plus all city government operations, with hydropower delivered from Quebec. For context, last year the city drew nearly <b>90% of its electricity from fossil fuels and only about 3% from hydro</b>.";
+    chpe.append(cb);
+    const cwhy = el("div"); cwhy.style.cssText="background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.25);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:13px";
+    cwhy.innerHTML = "<b style='color:var(--cyan)'>Why it isn't in the donuts above.</b> The live and downstate mixes count electricity <b>generated inside New York</b>, by fuel. CHPE power is <b>imported</b> — generated in Canada and delivered across the border — so in grid accounting it counts as <i>interchange</i> (a scheduled flow into the system), not as in-state generation. NYISO's real-time fuel-mix feed therefore does not include it, which means the mixes above <b>understate</b> the clean electricity actually reaching the city.";
+    chpe.append(cwhy);
+    const ccav = el("div"); ccav.style.cssText="margin-top:10px;font-size:12px;color:var(--faint)";
+    ccav.innerHTML = "How much CHPE actually delivers depends on Hydro-Québec's supply: three years of drought have drawn down Quebec's reservoirs, and Canadian demand from data centers and industry is rising. Hydro-Québec says its reservoirs are prepared for drought conditions. Source: Canary Media, June 5 2026.";
+    chpe.append(ccav);
+    document.getElementById("root").append(chpe);
   }
 
   const total = L.genTotalMW;
@@ -971,7 +986,7 @@ function buildMethod(D){
     <h4>Data sources</h4>
     <ul>
       <li><b>Load (demand):</b> <code>pal</code> feed — actual load by zone, 5-minute resolution. New York City is NYISO Zone J, labeled <code>N.Y.C.</code> Statewide load is the sum of all 11 zones.</li>
-      <li><b>Generation mix:</b> <code>rtfuelmix</code> feed — real-time output by fuel category, 5-minute resolution. <b>This is reported statewide, not per zone.</b> NYISO does not publish a New York City-only fuel mix in real time, so the mix shown reflects all of New York State, including upstate hydro and nuclear that New York City draws on through the transmission system.</li>
+      <li><b>Generation mix:</b> <code>rtfuelmix</code> feed — real-time output by fuel category, 5-minute resolution. <b>This is reported statewide, not per zone.</b> NYISO does not publish a New York City-only fuel mix in real time, so the mix shown reflects all of New York State, including upstate hydro and nuclear that New York City draws on through the transmission system. This feed counts <b>in-state generation only</b> — electricity imported over interties such as the Champlain Hudson Power Express (Hydro-Québec) is recorded as interchange, not generation, so it does not appear in the fuel mix even though it physically powers the city.</li>
       <li><b>Price:</b> <code>realtime_zone</code> feed — real-time locational-based marginal price (LBMP) by zone, in dollars per megawatt-hour ($/MWh).</li>
       <li><b>Load forecast:</b> <code>isolf</code> feed — NYISO's own zonal load forecast in MW, hourly. This is the <i>same metric</i> (zonal load) from the <i>same operator</i> as the actual load above, which is why the two can be compared directly. The only difference is cadence: the forecast is hourly and set ahead of time, actual load is every 5 minutes.</li>
       <li><b>Day-ahead price:</b> <code>damlbmp_zone</code> feed — day-ahead market LBMP by zone ($/MWh, hourly), cleared the evening before. It is the same LBMP definition as the real-time price, so the two compare directly; the gap between them is the difference between what the market expected and what actually happened.</li>
