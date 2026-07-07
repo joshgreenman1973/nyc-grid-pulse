@@ -269,8 +269,10 @@ function load(){
     fetch("data/baseline.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch("data/peakers.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch("data/grid-carbon.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+    // heat-demand.json is a static historical build (build-heat-demand.py); optional
+    fetch("data/heat-demand.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
   ])
-    .then(([D, B, Pk, GC]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk, GC); })
+    .then(([D, B, Pk, GC, HD]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk, GC, HD); })
     .catch(e => {
       document.getElementById("root").innerHTML =
         '<div class="err">Could not load grid data ('+e.message+'). The snapshot file <code>data/latest.json</code> may not have been generated yet. Run <code>node fetch-data.mjs</code>.</div>';
@@ -280,7 +282,7 @@ load();
 // re-pull the snapshot every 5 minutes so an open tab stays current
 setInterval(load, 5 * 60 * 1000);
 
-function render(D, B, Pk, GC){
+function render(D, B, Pk, GC, HD){
   const L = D.latest;
   // ---------- updated line ----------
   const ageMin = Math.max(0, Math.round((Date.now() - new Date(D.generatedAt)) / 60000));
@@ -727,6 +729,70 @@ function render(D, B, Pk, GC){
     } else { document.getElementById("peakerMap").style.display="none"; }
   }
 
+  // ================= HEAT VS DEMAND =================
+  if(HD && HD.points?.length){
+    const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const fdate=iso=>{ const [y,m,d]=iso.split("-"); return MON[+m-1]+" "+(+d)+", "+y; };
+    const s=HD.stats;
+    document.getElementById("root").append(sectionTag("How heat drives demand"));
+    const hd = el("div","card");
+    hd.append(h2("How heat drives demand",
+      "New York City's summer power demand is essentially an air-conditioning curve. Each dot is one summer day, "+HD.range+" — its high temperature against the city's peak load (NYISO Zone J). Hotter day, higher peak."));
+
+    const srow = el("div","hero"); srow.style.marginBottom="18px";
+    const jump = fmt((s.hotQuartileAvg/s.mildAvg-1)*100);
+    srow.append(
+      statCard("Temp vs peak", s.rTemp.toFixed(2), "correlation", cssVar("--amber"), "0 = none, 1 = lockstep. Feels-like temperature tracks even tighter, at "+s.rFeels.toFixed(2)+"."),
+      statCard("Each +1°F adds", "+"+fmt(s.slopeMwPerF), "MW to the peak", cssVar("--orange"), "Least-squares slope across "+HD.nDays+" summer days."),
+      statCard("Mild day (<75°F)", fmt(s.mildAvg), "MW peak", cssVar("--cyan"), "Average daily peak on cool summer days."),
+      statCard("Hottest quarter", fmt(s.hotQuartileAvg), "MW peak", cssVar("--red"), "Average on the hottest 25% of days — a "+jump+"% jump.")
+    );
+    hd.append(srow);
+
+    const ctrl = el("div"); ctrl.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap";
+    ctrl.append(h4mini("Every summer day, "+HD.range+" (hover a dot)"));
+    const tg = el("div","toggle");
+    const bZoom = el("button"); bZoom.textContent="Zoom to data"; bZoom.className="active";
+    const bZero = el("button"); bZero.textContent="Start axis at zero";
+    tg.append(bZoom, bZero); ctrl.append(tg); hd.append(ctrl);
+
+    const leg = el("div"); leg.style.cssText="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--muted);margin-bottom:8px";
+    leg.innerHTML =
+      "<span><span style='display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--cyan);opacity:.6;vertical-align:middle;margin-right:5px'></span>summer day</span>"+
+      "<span><span style='display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);vertical-align:middle;margin-right:5px'></span>very hot day (≥95°F)</span>"+
+      "<span><span style='display:inline-block;width:15px;height:3px;background:var(--amber);vertical-align:middle;margin-right:5px'></span>average peak by temperature</span>";
+    hd.append(leg);
+
+    const holder = el("div"); let zero=false;
+    const draw=()=>{ holder.innerHTML=""; holder.append(scatterChart(HD.points, HD.line, {zero})); };
+    bZoom.onclick=()=>{ zero=false; bZoom.className="active"; bZero.className=""; draw(); };
+    bZero.onclick=()=>{ zero=true; bZero.className="active"; bZoom.className=""; draw(); };
+    hd.append(holder); draw();
+
+    const th = el("div"); th.style.marginTop="20px"; th.append(h4mini("The hottest days in the window, and NYC's peak demand"));
+    hd.append(th);
+    const tbl = el("table","plist");
+    tbl.innerHTML = "<tr><th>Date</th><th class='n'>High</th><th class='n'>Feels like</th><th class='n'>NYC peak</th></tr>";
+    for(const r of HD.hottest){
+      const tr=el("tr");
+      tr.innerHTML = "<td>"+fdate(r.date)+"</td><td class='n'>"+fmt(r.tmax,1)+"°F</td><td class='n'>"+(r.feels!=null?fmt(r.feels,0)+"°F":"—")+"</td><td class='n'>"+fmt(r.peak)+" MW</td>";
+      tbl.append(tr);
+    }
+    hd.append(tbl);
+
+    const note = el("div"); note.style.cssText="color:var(--faint);font-size:12.5px;margin-top:14px";
+    const pk = HD.peakDays.find(p=>p.tmax < 93) || HD.peakDays[0];
+    note.innerHTML =
+      "<b>Two patterns stand out.</b> Peak demand <b>flattens near "+fmt(s.maxPeak)+" MW</b> — the window's high, set on "+fdate(s.maxPeakDate)+". Above roughly 95°F nearly every air conditioner is already running, so extra degrees add little more load. And the biggest-demand days aren't always the hottest: "+fdate(pk.date)+" hit <b>"+fmt(pk.peak)+" MW at only "+fmt(pk.tmax,0)+"°F</b> (feels-like "+fmt(pk.feels,0)+"°F) — sustained, humid heat with no overnight cooling loads the grid as hard as a one-day spike, which is why feels-like temperature ("+s.rFeels.toFixed(2)+") predicts demand better than the raw high ("+s.rTemp.toFixed(2)+").";
+    hd.append(note);
+
+    const src = el("div"); src.style.cssText="color:var(--faint);font-size:12px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px";
+    src.innerHTML =
+      "<b>Method.</b> Demand: "+HD.loadSource+" — each day's peak is the maximum of its 5-minute readings. Temperature: "+HD.tempSource+" — daily maximum air and apparent (\"feels-like\") temperature. "+HD.nDays+" days matched by date over "+HD.range+". Correlation is Pearson's r; the per-degree figure is a least-squares slope. Built by <code>build-heat-demand.py</code> (re-runnable); no value here is hand-entered. Snapshot "+HD.generatedAt+".";
+    hd.append(src);
+    document.getElementById("root").append(hd);
+  }
+
   buildMethod(D);
 }
 
@@ -884,6 +950,63 @@ function lineChart(series, opts){
     showTip('<div class="t-time">'+hhmm(d.t)+' ET</div><div class="t-row"><span>'+ (unit) +'</span><b>'+fmt(d.v,dec)+'</b></div>', e.clientX, e.clientY);
   });
   rect.addEventListener("mouseleave",()=>{hideTip(); hoverLine.setAttribute("opacity","0"); hoverDot.setAttribute("opacity","0");});
+  svg.append(rect);
+  wrap.append(svg);
+  return wrap;
+}
+
+// Scatter of daily high temperature (x) vs NYC peak demand (y), one dot per summer day.
+// `zero` starts the y-axis at 0 (the required zero-baseline toggle); default zooms to the data.
+function scatterChart(points, line, opts={}){
+  const {zero=false} = opts;
+  const ns="http://www.w3.org/2000/svg";
+  const W=560,H=300,P={l:56,r:14,t:12,b:32};
+  const wrap=el("div","chart");
+  const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  const xmin=60,xmax=104;
+  const peaks=points.map(p=>p[1]);
+  const dmax=Math.max(...peaks), dmin=Math.min(...peaks);
+  const ymax=Math.ceil((dmax*1.03)/500)*500;
+  const ymin=zero?0:Math.floor((dmin*0.96)/500)*500;
+  const X=t=>P.l+(Math.max(xmin,Math.min(xmax,t))-xmin)/(xmax-xmin)*(W-P.l-P.r);
+  const Y=v=>H-P.b-(v-ymin)/(ymax-ymin)*(H-P.t-P.b);
+  const ticks=zero?5:4;
+  for(let i=0;i<=ticks;i++){
+    const val=ymin+(ymax-ymin)*i/ticks, yy=Y(val);
+    const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
+    gl.setAttribute("x1",P.l);gl.setAttribute("x2",W-P.r);gl.setAttribute("y1",yy);gl.setAttribute("y2",yy);svg.append(gl);
+    const tx=document.createElementNS(ns,"text");tx.setAttribute("x",P.l-8);tx.setAttribute("y",yy+3);tx.setAttribute("text-anchor","end");tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");tx.textContent=fmt(val);svg.append(tx);
+  }
+  for(let t=60;t<=100;t+=10){
+    const tx=document.createElementNS(ns,"text");tx.setAttribute("x",X(t));tx.setAttribute("y",H-8);tx.setAttribute("text-anchor","middle");tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");tx.textContent=t+"°";svg.append(tx);
+  }
+  const pxs=[],pys=[];
+  for(const p of points){
+    const cx=X(p[0]), cy=Y(p[1]); pxs.push(cx); pys.push(cy);
+    const hot=p[0]>=95;
+    const c=document.createElementNS(ns,"circle");
+    c.setAttribute("cx",cx);c.setAttribute("cy",cy);c.setAttribute("r",hot?3.4:2.9);
+    c.setAttribute("fill",hot?"var(--red)":"var(--cyan)");c.setAttribute("fill-opacity",hot?"0.9":"0.42");
+    svg.append(c);
+  }
+  if(line&&line.length){
+    const pts=line.filter(l=>l[0]>=xmin&&l[0]<=xmax).map(l=>X(l[0])+","+Y(l[1])).join(" ");
+    const pl=document.createElementNS(ns,"polyline");pl.setAttribute("points",pts);pl.setAttribute("fill","none");pl.setAttribute("stroke","var(--amber)");pl.setAttribute("stroke-width","2.5");pl.setAttribute("stroke-linejoin","round");svg.append(pl);
+  }
+  const ring=document.createElementNS(ns,"circle");ring.setAttribute("r",6);ring.setAttribute("fill","none");ring.setAttribute("stroke","var(--text)");ring.setAttribute("stroke-width","1.5");ring.setAttribute("opacity","0");svg.append(ring);
+  const rect=document.createElementNS(ns,"rect");rect.setAttribute("x",0);rect.setAttribute("y",0);rect.setAttribute("width",W);rect.setAttribute("height",H);rect.setAttribute("fill","transparent");
+  rect.addEventListener("mousemove",e=>{
+    const box=svg.getBoundingClientRect();
+    const mx=(e.clientX-box.left)/box.width*W, my=(e.clientY-box.top)/box.height*H;
+    let bi=-1,bd=1e9;
+    for(let i=0;i<pxs.length;i++){const dx=pxs[i]-mx,dy=pys[i]-my,d=dx*dx+dy*dy;if(d<bd){bd=d;bi=i;}}
+    if(bi<0||bd>400){hideTip();ring.setAttribute("opacity","0");return;}
+    const p=points[bi];
+    ring.setAttribute("cx",pxs[bi]);ring.setAttribute("cy",pys[bi]);ring.setAttribute("opacity","1");
+    const feels=p[2]!=null?" · feels "+fmt(p[2],0)+"°":"";
+    showTip('<div class="t-time">'+p[3]+'</div><div class="t-row"><span>high</span><b>'+fmt(p[0],1)+'°F'+feels+'</b></div><div class="t-row"><span>NYC peak</span><b>'+fmt(p[1])+' MW</b></div>', e.clientX, e.clientY);
+  });
+  rect.addEventListener("mouseleave",()=>{hideTip();ring.setAttribute("opacity","0");});
   svg.append(rect);
   wrap.append(svg);
   return wrap;
