@@ -271,8 +271,10 @@ function load(){
     fetch("data/grid-carbon.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
     // heat-demand.json is a static historical build (build-heat-demand.py); optional
     fetch("data/heat-demand.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+    // daily-load.json is a static historical build (build-daily-load.py); optional
+    fetch("data/daily-load.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
   ])
-    .then(([D, B, Pk, GC, HD]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk, GC, HD); })
+    .then(([D, B, Pk, GC, HD, DL]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk, GC, HD, DL); })
     .catch(e => {
       document.getElementById("root").innerHTML =
         '<div class="err">Could not load grid data ('+e.message+'). The snapshot file <code>data/latest.json</code> may not have been generated yet. Run <code>node fetch-data.mjs</code>.</div>';
@@ -282,7 +284,7 @@ load();
 // re-pull the snapshot every 5 minutes so an open tab stays current
 setInterval(load, 5 * 60 * 1000);
 
-function render(D, B, Pk, GC, HD){
+function render(D, B, Pk, GC, HD, DL){
   const L = D.latest;
   // ---------- updated line ----------
   const ageMin = Math.max(0, Math.round((Date.now() - new Date(D.generatedAt)) / 60000));
@@ -729,6 +731,52 @@ function render(D, B, Pk, GC, HD){
     } else { document.getElementById("peakerMap").style.display="none"; }
   }
 
+  // ================= A YEAR OF DEMAND (day by day) =================
+  if(DL && DL.days?.length){
+    const MONF=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const fday=iso=>{ const [y,m,d]=iso.split("-"); return MON3[+m-1]+" "+(+d)+", "+y; };
+    const s=DL.stats;
+    document.getElementById("root").append(sectionTag("A year of demand"));
+    const yc = el("div","card");
+    yc.append(h2("A year of New York City power, day by day",
+      "Every day from "+fday(DL.start)+" to "+fday(DL.end)+" — the city's electricity use as one point per day. The two summer humps are air conditioning; the winter trough is the mild season, when little cools or heats on the grid. NYISO Zone J."));
+
+    const srow = el("div","hero"); srow.style.marginBottom="18px";
+    srow.append(
+      statCard("Year's total", fmt(s.energyTotalTWh,1), "TWh used", cssVar("--cyan"), "Sum of daily consumption across all "+DL.nDays+" days in the window."),
+      statCard("Busiest day", fmt(s.energyMax), "GWh", cssVar("--red"), "Most electricity used in a single day — "+fday(s.energyMaxDate)+"."),
+      statCard("Highest peak", fmt(s.peakMax), "MW", cssVar("--orange"), "The single highest 5-minute demand of the year, on "+fday(s.peakMaxDate)+"."),
+      statCard("Quietest day", fmt(s.energyMin), "GWh", cssVar("--blue"), "Least used — "+fday(s.energyMinDate)+", a mild low-demand day.")
+    );
+    yc.append(srow);
+
+    const ctrl = el("div"); ctrl.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap";
+    const mtg = el("div","toggle");
+    const bEnergy = el("button"); bEnergy.textContent="Energy used (GWh)"; bEnergy.className="active";
+    const bPeak = el("button"); bPeak.textContent="Peak demand (MW)";
+    mtg.append(bEnergy, bPeak); ctrl.append(mtg);
+    const ztg = el("div","toggle");
+    const bZoom = el("button"); bZoom.textContent="Zoom to data"; bZoom.className="active";
+    const bZero = el("button"); bZero.textContent="Start axis at zero";
+    ztg.append(bZoom, bZero); ctrl.append(ztg);
+    yc.append(ctrl);
+
+    const holder = el("div"); let metric="energy", zero=false;
+    const draw=()=>{ holder.innerHTML=""; holder.append(dailyChart(DL.days, {metric, zero})); };
+    bEnergy.onclick=()=>{ metric="energy"; bEnergy.className="active"; bPeak.className=""; draw(); };
+    bPeak.onclick=()=>{ metric="peak"; bPeak.className="active"; bEnergy.className=""; draw(); };
+    bZoom.onclick=()=>{ zero=false; bZoom.className="active"; bZero.className=""; draw(); };
+    bZero.onclick=()=>{ zero=true; bZero.className="active"; bZoom.className=""; draw(); };
+    yc.append(holder); draw();
+
+    const src = el("div"); src.style.cssText="color:var(--faint);font-size:12px;margin-top:14px;border-top:1px solid var(--line);padding-top:10px";
+    src.innerHTML =
+      "<b>Method.</b> "+DL.source+". For each day: <b>peak</b> is the maximum of that day's 5-minute readings; <b>energy used</b> is the day's average load × 24 hours (an average-times-hours integral, robust to the few extra readings archived days carry). "+DL.nDays+" days shown. This is a real-time metered-load series — behind-the-meter rooftop solar is netted out of it, so true consumption on sunny days runs a little higher. Built by <code>build-daily-load.py</code> (re-runnable); no value is hand-entered. Snapshot "+DL.generatedAt+".";
+    yc.append(src);
+    document.getElementById("root").append(yc);
+  }
+
   // ================= HEAT VS DEMAND =================
   if(HD && HD.points?.length){
     const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -948,6 +996,92 @@ function lineChart(series, opts){
     hoverLine.setAttribute("x1",x(i)); hoverLine.setAttribute("x2",x(i)); hoverLine.setAttribute("opacity","0.6");
     hoverDot.setAttribute("cx",x(i)); hoverDot.setAttribute("cy",y(d.v)); hoverDot.setAttribute("opacity","1");
     showTip('<div class="t-time">'+hhmm(d.t)+' ET</div><div class="t-row"><span>'+ (unit) +'</span><b>'+fmt(d.v,dec)+'</b></div>', e.clientX, e.clientY);
+  });
+  rect.addEventListener("mouseleave",()=>{hideTip(); hoverLine.setAttribute("opacity","0"); hoverDot.setAttribute("opacity","0");});
+  svg.append(rect);
+  wrap.append(svg);
+  return wrap;
+}
+
+// Daily time series over ~12 months: one point per day, month ticks on x, date hover.
+// opts.metric = "energy" (GWh/day) | "peak" (MW); opts.zero starts the y-axis at 0 (required toggle).
+function dailyChart(days, opts={}){
+  const metric = opts.metric==="peak" ? "peak" : "energy";
+  const zero = !!opts.zero;
+  const unit = metric==="peak" ? "MW" : "GWh";
+  const color = metric==="peak" ? cssVar("--orange") : cssVar("--cyan");
+  const label = metric==="peak" ? "Peak demand" : "Energy used";
+  const dec = metric==="peak" ? 0 : 1;
+  const MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const ns="http://www.w3.org/2000/svg";
+  const W=560, H=210, P={l:48,r:12,t:14,b:28};
+  const wrap=el("div","chart");
+  const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  const data = days.filter(d=>d[metric]!=null);
+  if(!data.length){ wrap.append(svg); return wrap; }
+  const vals=data.map(d=>d[metric]);
+  const vmax=Math.max(...vals), vlo=Math.min(...vals);
+  const ymin = zero ? 0 : Math.max(0, vlo - (vmax-vlo)*0.12);
+  const ymax = vmax + (vmax-ymin)*0.08;
+  const n=data.length;
+  const x=i=> P.l + i/(n-1)*(W-P.l-P.r);
+  const y=v=> H-P.b - (v-ymin)/(ymax-ymin)*(H-P.t-P.b);
+
+  // gridlines + y labels
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const val=ymin+(ymax-ymin)*i/ticks; const yy=y(val);
+    const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
+    gl.setAttribute("x1",P.l); gl.setAttribute("x2",W-P.r); gl.setAttribute("y1",yy); gl.setAttribute("y2",yy); svg.append(gl);
+    const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",P.l-8); tx.setAttribute("y",yy+3);
+    tx.setAttribute("text-anchor","end"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","10.5"); tx.setAttribute("font-family","var(--mono)");
+    tx.textContent=fmt(val,val<100?1:0); svg.append(tx);
+  }
+  // x labels at the first day of each month
+  let lastMonth="";
+  for(let i=0;i<n;i++){
+    const [yy,mm]=data[i].d.split("-");
+    if(mm!==lastMonth){
+      lastMonth=mm;
+      const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline"); gl.setAttribute("opacity","0.5");
+      gl.setAttribute("x1",x(i)); gl.setAttribute("x2",x(i)); gl.setAttribute("y1",P.t); gl.setAttribute("y2",H-P.b); svg.append(gl);
+      const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",x(i)); tx.setAttribute("y",H-9);
+      tx.setAttribute("text-anchor","middle"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","10"); tx.setAttribute("font-family","var(--mono)");
+      tx.textContent = MON3[+mm-1] + (mm==="01"? " '"+yy.slice(2) : "");
+      svg.append(tx);
+    }
+  }
+
+  // fill + line
+  const linePts=data.map((d,i)=>x(i)+","+y(d[metric])).join(" ");
+  const grad="dg"+metric;
+  const defs=document.createElementNS(ns,"defs");
+  const lg=document.createElementNS(ns,"linearGradient"); lg.id=grad; lg.setAttribute("x1","0");lg.setAttribute("x2","0");lg.setAttribute("y1","0");lg.setAttribute("y2","1");
+  const s1=document.createElementNS(ns,"stop"); s1.setAttribute("offset","0%"); s1.setAttribute("stop-color",color); s1.setAttribute("stop-opacity","0.30");
+  const s2=document.createElementNS(ns,"stop"); s2.setAttribute("offset","100%"); s2.setAttribute("stop-color",color); s2.setAttribute("stop-opacity","0");
+  lg.append(s1,s2); defs.append(lg); svg.append(defs);
+  const area=document.createElementNS(ns,"polygon");
+  area.setAttribute("points", P.l+","+(H-P.b)+" "+linePts+" "+(x(n-1))+","+(H-P.b));
+  area.setAttribute("fill","url(#"+grad+")"); svg.append(area);
+  const pl=document.createElementNS(ns,"polyline");
+  pl.setAttribute("points",linePts); pl.setAttribute("fill","none"); pl.setAttribute("stroke",color); pl.setAttribute("stroke-width","1.4"); pl.setAttribute("stroke-linejoin","round"); svg.append(pl);
+
+  // hover
+  const hoverLine=document.createElementNS(ns,"line"); hoverLine.setAttribute("stroke","var(--muted)"); hoverLine.setAttribute("stroke-width","1"); hoverLine.setAttribute("opacity","0"); hoverLine.setAttribute("y1",P.t); hoverLine.setAttribute("y2",H-P.b); svg.append(hoverLine);
+  const hoverDot=document.createElementNS(ns,"circle"); hoverDot.setAttribute("r",4); hoverDot.setAttribute("fill",color); hoverDot.setAttribute("stroke","#05080f"); hoverDot.setAttribute("stroke-width","2"); hoverDot.setAttribute("opacity","0"); svg.append(hoverDot);
+  const rect=document.createElementNS(ns,"rect"); rect.setAttribute("x",P.l); rect.setAttribute("y",P.t); rect.setAttribute("width",W-P.l-P.r); rect.setAttribute("height",H-P.t-P.b); rect.setAttribute("fill","transparent");
+  rect.addEventListener("mousemove",e=>{
+    const box=svg.getBoundingClientRect();
+    const px=(e.clientX-box.left)/box.width*W;
+    let i=Math.round((px-P.l)/(W-P.l-P.r)*(n-1)); i=Math.max(0,Math.min(n-1,i));
+    const d=data[i]; const [yy,mm,dd]=d.d.split("-");
+    const dt=new Date(+yy,+mm-1,+dd); const dow=DOW[dt.getDay()];
+    hoverLine.setAttribute("x1",x(i)); hoverLine.setAttribute("x2",x(i)); hoverLine.setAttribute("opacity","0.6");
+    hoverDot.setAttribute("cx",x(i)); hoverDot.setAttribute("cy",y(d[metric])); hoverDot.setAttribute("opacity","1");
+    showTip('<div class="t-time">'+dow+', '+MON3[+mm-1]+' '+(+dd)+', '+yy+'</div>'+
+      '<div class="t-row"><span>'+label+'</span><b>'+fmt(d[metric],dec)+' '+unit+'</b></div>'+
+      '<div class="t-row"><span>'+(metric==="peak"?"Energy used":"Peak demand")+'</span><b>'+(metric==="peak"?fmt(d.energy,1)+' GWh':fmt(d.peak,0)+' MW')+'</b></div>', e.clientX, e.clientY);
   });
   rect.addEventListener("mouseleave",()=>{hideTip(); hoverLine.setAttribute("opacity","0"); hoverDot.setAttribute("opacity","0");});
   svg.append(rect);
