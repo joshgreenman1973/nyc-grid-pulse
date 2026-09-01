@@ -45,10 +45,31 @@ function easternYmd(date = new Date()) {
   return `${get("year")}${get("month")}${get("day")}`;
 }
 
+// NYISO's MIS server intermittently refuses connections (ECONNREFUSED) or 5xxs
+// for a few seconds at a time, which failed the whole run on an otherwise
+// healthy feed. Retry those; do NOT retry a 404, which is the expected signal
+// that today's file isn't posted yet and drives the prior-day fallback below.
+const RETRY_DELAYS_MS = [2000, 4000, 8000];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function getCsv(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
-  return res.text();
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 429 || res.status >= 500) {
+        throw new Error(`${res.status} ${res.statusText} for ${url}`);
+      }
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+      return await res.text();
+    } catch (e) {
+      const retryable = !/^(4\d\d)\b/.test(e.message) || /^(429)\b/.test(e.message);
+      if (!retryable || attempt >= RETRY_DELAYS_MS.length) throw e;
+      const wait = RETRY_DELAYS_MS[attempt];
+      console.warn(`  ${url}: ${e.message}; attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}, sleeping ${wait / 1000}s`);
+      await sleep(wait);
+    }
+  }
 }
 
 // minimal CSV parser handling quoted fields
