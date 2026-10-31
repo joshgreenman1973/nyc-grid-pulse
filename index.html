@@ -178,6 +178,7 @@
   .leaflet-popup-content { font-family: var(--sans); font-size: 12.5px; margin: 10px 12px; }
   .leaflet-popup-content b { color: var(--amber); }
   .leaflet-container { font-family: var(--sans); }
+  .plist-wrap { overflow-x:auto; }
   .plist { width:100%; border-collapse:collapse; font-size:13px; margin-top:14px; }
   .plist th { text-align:left; color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.5px; padding:6px 8px; border-bottom:1px solid var(--line); }
   .plist td { padding:6px 8px; border-bottom:1px solid var(--line); }
@@ -686,7 +687,7 @@ function render(D, B, Pk, GC, HD, DL){
         "<td class='"+(oil?"fuel-oil":"fuel-gas")+"'>"+p.fuels.join(", ")+"</td><td class='n'>"+(p.minYear||"—")+"</td>";
       tbl.append(tr);
     }
-    pk.append(tbl);
+    const tblWrap = el("div","plist-wrap"); tblWrap.append(tbl); pk.append(tblWrap);
 
     // real-time category-level "fossil swing supply" — honest proxy for peaking activity
     const cats = L.fuelCats || {};
@@ -826,7 +827,7 @@ function render(D, B, Pk, GC, HD, DL){
       tr.innerHTML = "<td>"+fdate(r.date)+"</td><td class='n'>"+fmt(r.tmax,1)+"°F</td><td class='n'>"+(r.feels!=null?fmt(r.feels,0)+"°F":"—")+"</td><td class='n'>"+fmt(r.peak)+" MW</td>";
       tbl.append(tr);
     }
-    hd.append(tbl);
+    const tblWrap = el("div","plist-wrap"); tblWrap.append(tbl); hd.append(tblWrap);
 
     const note = el("div"); note.style.cssText="color:var(--faint);font-size:12.5px;margin-top:14px";
     const pk = HD.peakDays.find(p=>p.tmax < 93) || HD.peakDays[0];
