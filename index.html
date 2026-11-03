@@ -329,7 +329,7 @@ function render(D, B, Pk, GC, HD, DL){
     const DS_COLORS = {"Dual fuel (gas/oil)":"#f59e0b","Natural gas":"#fb923c","Oil":"#f97362","Hydro":"#38bdf8","Waste energy":"#8492ab","Solar":"#a3e635","Offshore wind":"#34d399"};
     const dsOrdered = ds.mix.map(m=>({name:m.fuel, mw:m.gwh, pct:m.pct}));
     const lead = el("div","card lead");
-    lead.append(h2("How the New York City region is actually powered",
+    lead.append(h2("How the New York City region is powered",
       "Energy produced in NYISO's downstate region (Zones F–K — New York City, Long Island and the lower Hudson Valley) in "+ds.year+", from the NYISO Power Trends report. This is the most representative picture of the city's power; the statewide live feed below runs cleaner only because New York's nuclear and hydro sit upstate."));
     // marquee: donut + legend
     const top = el("div","mix");
@@ -358,13 +358,13 @@ function render(D, B, Pk, GC, HD, DL){
 
     // ---- Champlain Hudson Power Express: imported hydro folded into net imports, not a fuel slice ----
     const chpe = el("div","card");
-    chpe.append(h2("The new Canadian hydro line — and why it isn't a clean slice in the mix above",
+    chpe.append(h2("The new Canadian hydro line and where it shows up in the mix",
       "The Champlain Hudson Power Express (CHPE), a 1,250 MW (1.25 GW) high-voltage line carrying Hydro-Québec hydropower to a converter station in Astoria, Queens, reached commercial operation on May 13, 2026 and began delivering contracted power on June 1, 2026."));
     const cb = el("div"); cb.style.cssText="color:var(--muted);font-size:13px;line-height:1.55";
     cb.innerHTML = "CHPE can supply up to <b>20% of New York City's electricity demand</b> — about a million homes — delivering roughly <b>10.4 terawatt-hours a year</b> of firm Quebec hydropower under a 25-year contract. For context, in 2024 the downstate region — New York City and its neighbors — produced more than <b>90% of its electricity from fossil fuels and only about 3% from hydro</b>.";
     chpe.append(cb);
     const cwhy = el("div"); cwhy.style.cssText="background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.25);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:13px";
-    cwhy.innerHTML = "<b style='color:var(--cyan)'>Why it isn't a clean-hydro slice above.</b> The live and downstate mixes count electricity <b>generated inside New York</b>, broken out by fuel. CHPE power is <b>imported</b> — generated in Canada and delivered across the border — so in grid accounting it counts as <i>interchange</i>, not in-state generation, and NYISO doesn't break imports out by fuel. So it can't show up as a hydro wedge above. It <b>is</b> counted in the <b>net imports</b> line beneath the live mix (statewide load minus in-state generation), which folds every intertie flow — CHPE plus New England and PJM — into a single figure. That line shows how much imported power the city leans on; it just can't say how much is Quebec hydro versus other sources, so the clean share of the fuel slices still <b>understates</b> the carbon-free electricity actually reaching the city.";
+    cwhy.innerHTML = "<b style='color:var(--cyan)'>Why it isn't a clean-hydro slice above.</b> The live and downstate mixes count electricity <b>generated inside New York</b>, broken out by fuel. CHPE power is <b>imported</b> — generated in Canada and delivered across the border — so in grid accounting it counts as <i>interchange</i>, not in-state generation, and NYISO doesn't break imports out by fuel. So it can't show up as a hydro wedge above. It <b>is</b> counted in the <b>net imports</b> line beneath the live mix (statewide load minus in-state generation), which folds every intertie flow — CHPE plus New England and PJM — into a single figure. That line shows how much imported power the city leans on; it just can't say how much is Quebec hydro versus other sources, so the clean share of the fuel slices still <b>understates</b> the carbon-free electricity reaching the city.";
     chpe.append(cwhy);
     const ccav = el("div"); ccav.style.cssText="margin-top:10px;font-size:12px;color:var(--faint)";
     ccav.innerHTML = "How much CHPE actually delivers depends on Hydro-Québec's supply: several years of low water have drawn down Quebec's reservoirs — the utility cut its electricity exports sharply in 2022–2024 — while Canadian demand from data centers and industry keeps rising. Hydro-Québec says it is managing its reserves and will keep limiting exports as conditions require. Sources: CBC and The Energy Mix, 2024–2026.";
@@ -425,7 +425,7 @@ function render(D, B, Pk, GC, HD, DL){
       t.innerHTML="Net imports <span class='mw'>+"+fmt(netImp)+" MW · "+fmt(impPct,1)+"% of statewide load</span>";
       row.append(sw,t); imp.append(row);
       const note=el("div"); note.style.cssText="margin-top:6px;font-size:11.5px;color:var(--faint);line-height:1.5";
-      note.innerHTML="<b>Derived — not a fuel, and not from the fuel-mix feed.</b> Statewide load minus in-state generation: power flowing in over the interties, including Quebec hydro on the Champlain Hudson Power Express, plus New England and PJM. NYISO's real-time mix counts only in-state generation, so these megawatts show up here rather than as a slice above. For scale, New York imported <b>38,785 GWh</b> and exported 18,148 GWh in 2024 — net imports near <b>20,600 GWh</b>, roughly a seventh of the state's electricity (NYISO 2025 Gold Book). Approximate — excludes line losses and pumped-storage charging.";
+      note.innerHTML="<b>Derived figure.</b> Statewide load minus in-state generation: power flowing in over the interties, including Quebec hydro on the Champlain Hudson Power Express, plus New England and PJM. NYISO's real-time mix counts only in-state generation, so these megawatts show up here rather than as a slice above. For scale, New York imported <b>38,785 GWh</b> and exported 18,148 GWh in 2024 — net imports near <b>20,600 GWh</b>, roughly a seventh of the state's electricity (NYISO 2025 Gold Book). Approximate — excludes line losses and pumped-storage charging.";
       imp.append(note);
     } else {
       const note=el("div"); note.style.cssText="font-size:11.5px;color:var(--faint);line-height:1.5";
@@ -444,7 +444,7 @@ function render(D, B, Pk, GC, HD, DL){
 
   // Behind-the-meter rooftop solar disclosure (static; the feed can't see it)
   const btm = el("div"); btm.style.cssText="font-size:11.5px;color:var(--faint);line-height:1.5;margin-top:13px;padding-top:11px;border-top:1px dashed var(--line)";
-  btm.innerHTML = "<b style='color:var(--lime)'>Rooftop solar isn't shown here either — about 7.5 GW of it.</b> New York has roughly <b>7,500 MW</b> of behind-the-meter solar (NYISO 2025 Gold Book) that this feed can't see: it sits on the customer side of the meter, so it registers as <i>reduced demand</i>, not supply. On a clear spring midday it generates as much as <b>~4,800 MW</b>, and it shaves about <b>1,600 MW — near 5%</b> — off the summer peak, all invisible above. That's why the carbon-free share is understated on sunny days. It does not distort the net-imports line: rooftop output is netted out of both load and generation, so it cancels.";
+  btm.innerHTML = "<b style='color:var(--lime)'>Rooftop solar, about 7.5 GW of it, is also missing.</b> New York has roughly <b>7,500 MW</b> of behind-the-meter solar (NYISO 2025 Gold Book) that this feed can't see: it sits on the customer side of the meter, so it registers as <i>reduced demand</i>, not supply. On a clear spring midday it generates as much as <b>~4,800 MW</b>, and it shaves about <b>1,600 MW — near 5%</b> — off the summer peak, all invisible above. That's why the carbon-free share is understated on sunny days. It does not distort the net-imports line: rooftop output is netted out of both load and generation, so it cancels.";
   mixCard.append(btm);
 
   // CLCPA policy context (static; persists across the toggle)
@@ -643,7 +643,7 @@ function render(D, B, Pk, GC, HD, DL){
   if(GC && GC.cities?.length){
     document.getElementById("root").append(sectionTag("How clean is the grid — city by city"));
     const gcCard = el("div","card");
-    gcCard.append(h2("Grid carbon intensity by city", GC.what+" Each city is shown by the grid it sits on — U.S. cities by their EPA eGRID subregion (the most local official figure), international cities by their national grid."));
+    gcCard.append(h2("Grid carbon intensity by city", GC.what+" Each city is shown by the grid it sits on — U.S. cities by their Environmental Protection Agency (EPA) eGRID subregion (the most local official figure), international cities by their national grid."));
     const cities = GC.cities.slice().sort((a,b)=>a.g-b.g);
     const maxG = Math.max(...cities.map(c=>c.g));
     for(const c of cities){
@@ -704,7 +704,7 @@ function render(D, B, Pk, GC, HD, DL){
     );
     pk.append(sflex);
     const pn = el("div"); pn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
-    pn.innerHTML = "When demand climbs, the grid leans on dispatchable fossil generation — and oil-fired output (NYISO's \"other fossil fuels\") is the last resort, appearing mainly under stress. <b>Important:</b> NYISO reports this by fuel category statewide and does not publish unit-level output, so these megawatts cannot be attributed to the specific plants mapped above. The map and list are verified locations (U.S. EIA); the real-time figures are the closest public signal of peaking activity, not a plant-by-plant readout.";
+    pn.innerHTML = "When demand climbs, the grid leans on dispatchable fossil generation — and oil-fired output (NYISO's \"other fossil fuels\") is the last resort, appearing mainly under stress. NYISO reports this by fuel category statewide and does not publish unit-level output, so these megawatts cannot be attributed to the specific plants mapped above. The map and list are verified locations (U.S. EIA); the real-time figures are the closest public signal of peaking activity, not a plant-by-plant readout.";
     pk.append(pn);
 
     const src = el("div"); src.style.cssText="color:var(--faint);font-size:12px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px";
@@ -786,7 +786,7 @@ function render(D, B, Pk, GC, HD, DL){
     document.getElementById("root").append(sectionTag("How heat drives demand"));
     const hd = el("div","card");
     hd.append(h2("How heat drives demand",
-      "New York City's summer power demand is essentially an air-conditioning curve. Each dot is one summer day, "+HD.range+" — its high temperature against the city's peak load (NYISO Zone J). Hotter day, higher peak."));
+      "New York City's summer power demand rises with air-conditioning use. Each dot is one summer day, "+HD.range+" — its high temperature against the city's peak load (NYISO Zone J). Hotter day, higher peak."));
 
     const srow = el("div","hero"); srow.style.marginBottom="18px";
     const jump = fmt((s.hotQuartileAvg/s.mildAvg-1)*100);
@@ -818,7 +818,7 @@ function render(D, B, Pk, GC, HD, DL){
     bZero.onclick=()=>{ zero=true; bZero.className="active"; bZoom.className=""; draw(); };
     hd.append(holder); draw();
 
-    const th = el("div"); th.style.marginTop="20px"; th.append(h4mini("The hottest days in the window, and NYC's peak demand"));
+    const th = el("div"); th.style.marginTop="20px"; th.append(h4mini("The hottest days in the window, and New York City's peak demand"));
     hd.append(th);
     const tbl = el("table","plist");
     tbl.innerHTML = "<tr><th>Date</th><th class='n'>High</th><th class='n'>Feels like</th><th class='n'>NYC peak</th></tr>";
@@ -832,7 +832,7 @@ function render(D, B, Pk, GC, HD, DL){
     const note = el("div"); note.style.cssText="color:var(--faint);font-size:12.5px;margin-top:14px";
     const pk = HD.peakDays.find(p=>p.tmax < 93) || HD.peakDays[0];
     note.innerHTML =
-      "<b>Two patterns stand out.</b> Peak demand <b>flattens near "+fmt(s.maxPeak)+" MW</b> — the window's high, set on "+fdate(s.maxPeakDate)+". Above roughly 95°F nearly every air conditioner is already running, so extra degrees add little more load. And the biggest-demand days aren't always the hottest: "+fdate(pk.date)+" hit <b>"+fmt(pk.peak)+" MW at only "+fmt(pk.tmax,0)+"°F</b> (feels-like "+fmt(pk.feels,0)+"°F) — sustained, humid heat with no overnight cooling loads the grid as hard as a one-day spike, which is why feels-like temperature ("+s.rFeels.toFixed(2)+") predicts demand better than the raw high ("+s.rTemp.toFixed(2)+").";
+      "Peak demand <b>flattens near "+fmt(s.maxPeak)+" MW</b> — the window's high, set on "+fdate(s.maxPeakDate)+". Above roughly 95°F nearly every air conditioner is already running, so extra degrees add little more load. And the biggest-demand days aren't always the hottest: "+fdate(pk.date)+" hit <b>"+fmt(pk.peak)+" MW at only "+fmt(pk.tmax,0)+"°F</b> (feels-like "+fmt(pk.feels,0)+"°F) — sustained, humid heat with no overnight cooling loads the grid as hard as a one-day spike, which is why feels-like temperature ("+s.rFeels.toFixed(2)+") predicts demand better than the raw high ("+s.rTemp.toFixed(2)+").";
     hd.append(note);
 
     const src = el("div"); src.style.cssText="color:var(--faint);font-size:12px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px";
@@ -1267,7 +1267,7 @@ function stackedArea(fuelMix){
 function buildMethod(D){
   const factors=Object.entries(D.co2FactorsLbsPerMWh).map(([k,v])=>'<tr><td>'+k+'</td><td class="n">'+v+'</td></tr>').join("");
   document.getElementById("method").innerHTML = `
-    <p>This page reads three public real-time feeds published by the New York Independent System Operator (NYISO) and updates them on a schedule. Nothing here is modeled or smoothed beyond what is stated below — every number traces back to a NYISO CSV.</p>
+    <p>This page reads three public real-time feeds published by the New York Independent System Operator (NYISO) and updates them on a schedule. Every number traces back to a NYISO CSV; any modeling or smoothing is stated below.</p>
 
     <h4>Data sources</h4>
     <ul>
@@ -1277,7 +1277,7 @@ function buildMethod(D){
       <li><b>Load forecast:</b> <code>isolf</code> feed — NYISO's own zonal load forecast in MW, hourly. This is the <i>same metric</i> (zonal load) from the <i>same operator</i> as the actual load above, which is why the two can be compared directly. The only difference is cadence: the forecast is hourly and set ahead of time, actual load is every 5 minutes.</li>
       <li><b>Day-ahead price:</b> <code>damlbmp_zone</code> feed — day-ahead market LBMP by zone ($/MWh, hourly), cleared the evening before. It is the same LBMP definition as the real-time price, so the two compare directly; the gap between them is the difference between what the market expected and what actually happened.</li>
     </ul>
-    <p><b>On comparators:</b> every comparison on this page is drawn between series that share a definition and a source. Forecast-vs-actual and day-ahead-vs-real-time are both NYISO measuring the same quantity two ways. We deliberately do <i>not</i> overlay outside datasets whose definitions differ — for example, federal U.S. Energy Information Administration (EIA) "demand" is derived differently from NYISO metered "load," and EIA fuel categories (coal, solar, petroleum) do not map onto NYISO's ("Dual Fuel," "Other Fossil Fuels"), so mixing them would mislead.</p>
+    <p><b>On comparators:</b> every comparison on this page is drawn between series that share a definition and a source. Forecast-vs-actual and day-ahead-vs-real-time are both NYISO measuring the same quantity two ways. We do not overlay outside datasets whose definitions differ — for example, federal U.S. Energy Information Administration (EIA) "demand" is derived differently from NYISO metered "load," and EIA fuel categories (coal, solar, petroleum) do not map onto NYISO's ("Dual Fuel," "Other Fossil Fuels"), so mixing them would mislead.</p>
 
     <h4>How the headline numbers are built</h4>
     <ul>
@@ -1291,13 +1291,13 @@ function buildMethod(D){
     <p>The "if Indian Point ran" toggle on the generation mix is a counterfactual, clearly labeled as such. It adds 2,060 MW of nuclear — the net summer capacity of the retired Indian Point Energy Center (Unit 2 ~1,020 MW, retired April 30, 2020; Unit 3 ~1,040 MW, retired April 30, 2021, per the U.S. Energy Information Administration) — and removes an equal amount of fossil generation proportionally across natural gas, dual-fuel and other fossil fuels, holding total generation equal to demand. Nuclear plants run as baseload near full output around the clock, so adding the full capacity is a reasonable illustration of scale. It is <i>not</i> a precise simulation: in reality the market would have dispatched plants differently, and prices and interchange would differ. Capacity and dates are verified facts; the displacement is the stated assumption.</p>
 
     <h4>Downstate generation mix and city solar</h4>
-    <p>The lead "how the New York City region is actually powered" figures come from the NYISO 2025 Power Trends report, Figure 23 (2024 energy production), for the downstate region — NYISO Zones F through K, which cover New York City, Long Island and the lower Hudson Valley. These are annual figures, not real-time, and represent energy <i>produced</i> in the downstate region; the region also receives power over transmission from upstate and neighboring grids. The statewide live mix is shown separately because it is the only fuel mix NYISO publishes in real time. The citywide solar figures (about 641.5 MW installed in 2025, against a 1-gigawatt-by-2030 citywide goal) come from the New York City Independent Budget Office's December 2025 Solar Power Progress Report; that citywide goal is distinct from the Local Law 99 mandate of 100 MW on city-owned buildings.</p>
+    <p>The lead "how the New York City region is powered" figures come from the NYISO 2025 Power Trends report, Figure 23 (2024 energy production), for the downstate region — NYISO Zones F through K, which cover New York City, Long Island and the lower Hudson Valley. These are annual figures, not real-time, and represent energy <i>produced</i> in the downstate region; the region also receives power over transmission from upstate and neighboring grids. The statewide live mix is shown separately because it is the only fuel mix NYISO publishes in real time. The citywide solar figures (about 641.5 MW installed in 2025, against a 1-gigawatt-by-2030 citywide goal) come from the New York City Independent Budget Office's December 2025 Solar Power Progress Report; that citywide goal is distinct from the Local Law 99 mandate of 100 MW on city-owned buildings.</p>
 
     <h4>Grid carbon intensity by city</h4>
     <p>Carbon intensity (grams of CO₂ per kWh) is a grid-level quantity, so each city is mapped to the grid it sits on. U.S. cities use their U.S. EPA eGRID2023 subregion CO₂ total output emission rate (lb/MWh, converted at 0.4536 g/kWh per lb/MWh) — the most local official figure; New York City has its own subregion (NYC/Westchester), while others such as Chicago's (RFC West) span multiple states, so a city's own utility may differ. International cities use their national grid's CO₂ intensity of generation from Our World in Data (Ember / Energy Institute), 2024. These are annual averages from two source families and are not directly comparable to the real-time, statewide figure shown in the carbon-intensity card above. New York City's local subregion is unusually gas-heavy (~98% of in-city generation), which is why it ranks high.</p>
 
     <h4>Peaker plants</h4>
-    <p>Plant locations come from U.S. EIA Form 860M, the federal inventory of every operating generator (with coordinates, prime mover, capacity and sector). We count a plant as a New York City peaker if it sits in the five boroughs, its prime mover is a simple-cycle combustion turbine (GT) or internal-combustion engine (IC), and it is in the Electric Utility or merchant IPP sector. That last filter deliberately excludes the many hospital, university and commercial backup/cogeneration engines EIA also lists, which are not grid peaking plants. NYISO does not publish unit-level real-time output, so the dashboard cannot show which individual plants are running at a given moment; the "dispatchable fossil generation" figures are statewide fuel-category totals from the live feed, shown as the closest public proxy for peaking activity.</p>
+    <p>Plant locations come from U.S. EIA Form 860M, the federal inventory of every operating generator (with coordinates, prime mover, capacity and sector). We count a plant as a New York City peaker if it sits in the five boroughs, its prime mover is a simple-cycle combustion turbine (GT) or internal-combustion engine (IC), and it is in the Electric Utility or merchant independent power producer (IPP) sector. That last filter excludes the many hospital, university and commercial backup/cogeneration engines EIA also lists, which are not grid peaking plants. NYISO does not publish unit-level real-time output, so the dashboard cannot show which individual plants are running at a given moment; the "dispatchable fossil generation" figures are statewide fuel-category totals from the live feed, shown as the closest public proxy for peaking activity.</p>
 
     <h4>Historical comparison ("a normal day")</h4>
     <p>The "how today compares" chart uses NYISO's archived <code>pal</code> files, which are byte-identical to the live feed. The shaded band is the 10th–90th percentile of New York City load for every <b>weekday</b> of the current month so far (today excluded), computed per 5-minute slot; the dashed line is the median. Weekday-only because weekend load is structurally lower. Each archived reading is bucketed to its 5-minute slot and averaged within the day so all days align to a 288-slot grid. Prior-year lines are the same calendar date in earlier years, pulled from NYISO's monthly archive ZIPs. Year-to-year and day-to-day swings are driven mostly by weather, not a trend.</p>
