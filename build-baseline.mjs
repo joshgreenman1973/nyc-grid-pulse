@@ -5,13 +5,18 @@
 // byte-identical in format to the live feed:
 //
 //   typicalDay : per-5-minute-slot p10 / median / p90 of New York City (Zone J) load
-//                across the WEEKDAYS of the current month so far (today excluded).
-//                A "what does a normal day look like" band. Weekday-only because
-//                weekend load is structurally lower and today is a weekday.
+//                across the last 28 days that are the SAME KIND of day as today
+//                (today excluded): weekdays if today is a working weekday, else
+//                weekends and holidays, which run structurally lower. Read from
+//                data/history/nyc-load-curves.json, which build-daily-load.py keeps
+//                (NYISO's own current-month archive is too sparse to rely on: in
+//                November 2026 it held only six days, leaving a two-day band).
 //
-//   priorYears : the New York City load curve on the SAME calendar date in prior
-//                years (default 3). Year-to-year differences are driven mostly by
-//                weather, not by any trend — labeled as such in the dashboard.
+//   priorYears : the New York City load curve on the same WEEKDAY one, two and
+//                three years back (52, 104, 156 weeks), so a Tuesday is compared
+//                with a Tuesday and a holiday never stands in for a working day.
+//                Year-to-year differences are driven mostly by weather, not by any
+//                trend — labeled as such in the dashboard.
 //
 // Archived months come as ZIPs (one CSV per day). We shell out to `unzip`
 // (present on macOS and the GitHub Actions ubuntu runner).
@@ -84,53 +89,70 @@ function percentile(sorted, p) {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
+// Eastern calendar date (NYISO's dates are Eastern; the Actions runner is UTC).
+function easternToday() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const g = (t) => +parts.find((p) => p.type === t).value;
+  return new Date(Date.UTC(g("year"), g("month") - 1, g("day")));
+}
+// All dates below are UTC-midnight Date objects standing for Eastern calendar days.
+const iso = (d) => d.toISOString().slice(0, 10);
+const addDays = (d, n) => new Date(d.getTime() + n * 86400000);
+const nthWeekday = (y, m, dow, n) => { // n-th (1-based) weekday of a month; n = -1 for the last
+  if (n > 0) { const first = new Date(Date.UTC(y, m, 1)); return addDays(first, ((dow - first.getUTCDay() + 7) % 7) + 7 * (n - 1)); }
+  const last = new Date(Date.UTC(y, m + 1, 0)); return addDays(last, -((last.getUTCDay() - dow + 7) % 7));
+};
+const observed = (d) => (d.getUTCDay() === 6 ? addDays(d, -1) : d.getUTCDay() === 0 ? addDays(d, 1) : d);
+// Holidays that visibly lower city load: the NERC holidays plus the day after Thanksgiving.
+function holidays(y) {
+  const thanks = nthWeekday(y, 10, 4, 4);
+  return new Set([
+    observed(new Date(Date.UTC(y, 0, 1))), nthWeekday(y, 4, 1, -1), observed(new Date(Date.UTC(y, 6, 4))),
+    nthWeekday(y, 8, 1, 1), thanks, addDays(thanks, 1), observed(new Date(Date.UTC(y, 11, 25))),
+  ].map(iso));
+}
+const isHoliday = (d) => holidays(d.getUTCFullYear()).has(iso(d));
+const isWorkday = (d) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && !isHoliday(d);
+const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const slotLabel = (i) => `${pad(Math.floor(i / 12))}:${pad((i % 12) * 5)}`;
+
 async function main() {
   rmSync(TMP, { recursive: true, force: true });
-  const now = new Date();
-  const month01 = `${now.getFullYear()}${pad(now.getMonth() + 1)}01`;
-  const todayStr = ymd(now);
+  const today = easternToday();
+  const todayWork = isWorkday(today);
+  const dayType = todayWork ? "weekday" : "weekend or holiday";
 
-  // ---- typical weekday band from the current month so far ----
-  const monthDir = `${TMP}/cur`;
-  await downloadMonthZip(month01, monthDir);
-  const slotValues = new Map(); // "HH:MM" -> [MW,...]
-  let weekdaysUsed = 0;
-  for (const file of readdirSync(monthDir)) {
-    const m = file.match(/^(\d{8})pal\.csv$/);
-    if (!m) continue;
-    const dateStr = m[1];
-    if (dateStr >= todayStr) continue; // exclude today and any future
-    const d = new Date(+dateStr.slice(0, 4), +dateStr.slice(4, 6) - 1, +dateStr.slice(6, 8));
-    const dow = d.getDay();
-    if (dow === 0 || dow === 6) continue; // weekdays only
-    weekdaysUsed++;
-    for (const [slot, mw] of nycBySlot(readFileSync(`${monthDir}/${file}`, "utf8"))) {
-      if (!slotValues.has(slot)) slotValues.set(slot, []);
-      slotValues.get(slot).push(mw);
-    }
+  // ---- typical-day band: last 28 days of the same kind as today ----
+  const curvesPath = `${__dirname}/data/history/nyc-load-curves.json`;
+  const curves = JSON.parse(readFileSync(curvesPath, "utf8")).days; // run build-daily-load.py first
+  const windowStart = addDays(today, -28);
+  const used = Object.keys(curves)
+    .filter((k) => k >= iso(windowStart) && k < iso(today))
+    .filter((k) => isWorkday(new Date(k + "T00:00:00Z")) === todayWork)
+    .sort();
+  const typicalDay = [];
+  for (let i = 0; i < 288; i++) {
+    const s = used.map((k) => curves[k][i]).filter(Number.isFinite).sort((a, b) => a - b);
+    if (!s.length) continue;
+    typicalDay.push({ slot: slotLabel(i), p10: +percentile(s, 0.1).toFixed(0), median: +percentile(s, 0.5).toFixed(0), p90: +percentile(s, 0.9).toFixed(0), n: s.length });
   }
-  const typicalDay = [...slotValues.entries()]
-    .map(([slot, arr]) => {
-      const s = arr.slice().sort((a, b) => a - b);
-      return { slot, p10: +percentile(s, 0.1).toFixed(0), median: +percentile(s, 0.5).toFixed(0), p90: +percentile(s, 0.9).toFixed(0), n: arr.length };
-    })
-    .sort((a, b) => a.slot.localeCompare(b.slot));
 
-  // ---- prior-year same-date curves ----
+  // ---- same weekday 52, 104 and 156 weeks back ----
   const priorYears = [];
   for (let i = 1; i <= PRIOR_YEARS; i++) {
-    const y = now.getFullYear() - i;
-    const ym01 = `${y}${pad(now.getMonth() + 1)}01`;
-    const dir = `${TMP}/y${y}`;
+    let d = addDays(today, -364 * i);
+    // keep a holiday from standing in for a working day (and vice versa)
+    if (isWorkday(d) !== todayWork) d = addDays(d, -7);
+    const y = d.getUTCFullYear(), mo = d.getUTCMonth() + 1, da = d.getUTCDate();
+    const dir = `${TMP}/y${y}${pad(mo)}`;
     try {
-      await downloadMonthZip(ym01, dir);
-      const dateFile = `${dir}/${y}${pad(now.getMonth() + 1)}${pad(now.getDate())}pal.csv`;
-      const slots = nycBySlot(readFileSync(dateFile, "utf8"));
+      await downloadMonthZip(`${y}${pad(mo)}01`, dir);
+      const slots = nycBySlot(readFileSync(`${dir}/${y}${pad(mo)}${pad(da)}pal.csv`, "utf8"));
       const curve = [...slots.entries()].map(([slot, mw]) => ({ slot, nyc: +mw.toFixed(0) })).sort((a, b) => a.slot.localeCompare(b.slot));
       const peak = curve.reduce((mx, c) => (c.nyc > mx.nyc ? c : mx), { nyc: 0, slot: null });
-      priorYears.push({ year: y, date: `${y}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`, peakMW: peak.nyc, peakSlot: peak.slot, curve });
+      priorYears.push({ year: y, date: iso(d), weekday: DOW[d.getUTCDay()], holiday: isHoliday(d), peakMW: peak.nyc, peakSlot: peak.slot, curve });
     } catch (e) {
-      console.warn(`  skip ${y}: ${e.message}`);
+      console.warn(`  skip ${iso(d)}: ${e.message}`);
     }
   }
 
@@ -138,16 +160,19 @@ async function main() {
 
   const out = {
     generatedAt: new Date().toISOString(),
-    forDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
-    typicalDay: { weekdaysUsed, monthLabel: now.toLocaleString("en-US", { month: "long", year: "numeric" }), slots: typicalDay },
+    forDate: iso(today),
+    typicalDay: {
+      dayType, daysUsed: used.length, windowStart: used[0] ?? null, windowEnd: used[used.length - 1] ?? null,
+      todayHoliday: isHoliday(today), slots: typicalDay,
+    },
     priorYears,
   };
   mkdirSync(`${__dirname}/data`, { recursive: true });
   writeFileSync(`${__dirname}/data/baseline.json`, JSON.stringify(out));
   console.log(
-    `Wrote data/baseline.json\n` +
-      `  typical-day band: ${weekdaysUsed} weekdays of ${out.typicalDay.monthLabel}, ${typicalDay.length} slots\n` +
-      `  prior years: ${priorYears.map((p) => `${p.year} peak ${p.peakMW} MW`).join(" · ")}`
+    `Wrote data/baseline.json for ${out.forDate}\n` +
+      `  typical-day band: ${used.length} ${dayType} days (${out.typicalDay.windowStart} to ${out.typicalDay.windowEnd}), ${typicalDay.length} slots\n` +
+      `  prior years: ${priorYears.map((p) => `${p.date} (${p.weekday}) peak ${p.peakMW} MW`).join(" · ")}`
   );
 }
 

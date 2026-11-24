@@ -54,6 +54,10 @@
   .updated { text-align: right; font-size: 12.5px; color: var(--muted); }
   .updated b { color: var(--text); font-variant-numeric: tabular-nums; }
   .updated .live { color: var(--green); font-weight: 600; }
+  .updated .live.late { color: var(--amber); }
+  .updated .live.stale { color: var(--red); }
+  .pulse-dot.late { background: var(--amber); animation: none; }
+  .pulse-dot.stale { background: var(--red); animation: none; }
 
   /* hero stats */
   .hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
@@ -285,13 +289,46 @@ load();
 // re-pull the snapshot every 5 minutes so an open tab stays current
 setInterval(load, 5 * 60 * 1000);
 
+// Current Eastern wall-clock time as "YYYY-MM-DDTHH:MM:SS" — the same shape as
+// NYISO timestamps in latest.json, so the two compare as strings.
+function easternNowIso(){
+  const parts = new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
+  const g = t => parts.find(p=>p.type===t).value;
+  return g("year")+"-"+g("month")+"-"+g("day")+"T"+g("hour")+":"+g("minute")+":"+g("second");
+}
+// minutes between two Eastern wall-clock strings (both naive, same zone)
+function minutesBetween(a, b){ return Math.round((new Date(b+"Z") - new Date(a+"Z")) / 60000); }
+function ageText(min){ return min < 60 ? min+" min" : (min/60 < 10 ? (min/60).toFixed(1).replace(/\.0$/,"") : Math.round(min/60))+" hr"; }
+
 function render(D, B, Pk, GC, HD, DL){
   const L = D.latest;
-  // ---------- updated line ----------
-  const ageMin = Math.max(0, Math.round((Date.now() - new Date(D.generatedAt)) / 60000));
+  const nowEt = easternNowIso();
+
+  // NYISO's real-time price file runs ~2.5 hours ahead of the clock with advisory
+  // (forecast) intervals. fetch-data.mjs drops them now; this guard also cleans
+  // older snapshots, and keeps the price "now" from ever being a future interval.
+  D.price = (D.price||[]).filter(p => p.t <= nowEt);
+  {
+    const lastP = D.price[D.price.length-1];
+    const pr = lastP?.zones?.["N.Y.C."]?.lbmp ?? null;
+    L.priceT = lastP?.t ?? null;
+    L.nycPriceLbmp = pr;
+    L.nycSpendPerHour = (pr!=null && L.nycLoadMW!=null) ? Math.round(L.nycLoadMW*pr) : null;
+    const da = L.priceT ? (D.dayAhead||[]).find(d => d.t.slice(0,13) === L.priceT.slice(0,13)) : null;
+    L.nycDayAheadLbmp = da ? da.nyc : null;
+    L.rtVsDaPct = (da && pr!=null) ? +(((pr-da.nyc)/da.nyc)*100).toFixed(1) : null;
+  }
+
+  // ---------- updated line: say plainly how old the reading is ----------
+  const readingAge = Math.max(0, minutesBetween(L.t, nowEt));
+  const fresh = readingAge <= 20, late = !fresh && readingAge <= 90;
+  const state = fresh ? "" : late ? " late" : " stale";
+  const badge = fresh ? "● LIVE" : late ? "● DELAYED" : "● NOT CURRENT";
+  document.querySelector(".pulse-dot")?.setAttribute("class", "pulse-dot"+state);
+  const dateNote = L.t.slice(0,10) !== nowEt.slice(0,10) ? " on "+L.t.slice(0,10) : "";
   document.getElementById("updated").innerHTML =
-    '<div><span class="live">● LIVE</span> · reading of <b>'+hhmm(L.t)+'</b> ET</div>' +
-    '<div style="margin-top:3px">snapshot built '+ageMin+' min ago · '+D.sourceDate+'</div>';
+    '<div><span class="live'+state+'">'+badge+'</span> · reading of <b>'+hhmm(L.t)+'</b> ET'+dateNote+'</div>' +
+    '<div style="margin-top:3px">'+(fresh ? "NYISO posts a new reading every 5 minutes" : "This reading is "+ageText(readingAge)+" old; the page refreshes itself as new data arrives")+'</div>';
 
   // ---------- running wholesale spend today (integrate load × price over 5-min steps) ----------
   const priceByT = new Map(D.price.map(p => [p.t, p.zones?.["N.Y.C."]?.lbmp]));
@@ -314,7 +351,7 @@ function render(D, B, Pk, GC, HD, DL){
     statCard("Share of New York State", fmt(L.nycSharePct,1)+"%", "of statewide load", "var(--blue)",
       "Statewide load right now: "+fmt(L.stateLoadMW)+" MW across 11 zones"),
     statCard("Wholesale price", "$"+fmt(L.nycPriceLbmp,2), "/MWh · "+fmt(centsKwh,1)+"¢/kWh", "var(--red)",
-      "Real-time locational price for New York City — energy only, before delivery and taxes"),
+      "Real-time locational price for New York City"+(L.priceT? " at "+hhmm(L.priceT) : "")+" — energy only, before delivery and taxes"),
     statCard("Wholesale spend rate", "$"+fmt(Math.round(L.nycSpendPerHour/1000))+"K", "/hour", "var(--green)",
       "≈ NYC load × NYC price · about $"+fmt(spendToday/1e6,2)+"M on energy so far today")
   );
@@ -506,30 +543,40 @@ function render(D, B, Pk, GC, HD, DL){
   // today vs. a normal day (needs baseline.json)
   if(B && B.typicalDay?.slots?.length){
     const todaySlots = D.load.filter(l=>l.nyc!=null).map(l=>({slot:hhmm(l.t), v:l.nyc}));
-    const priors = (B.priorYears||[]).filter(p=>p.curve?.length);
+    // prior-year lines are chosen for a specific date; hide them if the baseline was built for another day
+    const priors = B.forDate===nowEt.slice(0,10) ? (B.priorYears||[]).filter(p=>p.curve?.length) : [];
+    const TD = B.typicalDay;
+    const kind = TD.dayType==="weekday" ? "weekdays" : "weekends and holidays";
+    const MON = ["Jan.","Feb.","March","April","May","June","July","Aug.","Sept.","Oct.","Nov.","Dec."];
+    const apDate = (iso, yr) => { const [y,m,d]=iso.split("-"); return MON[+m-1]+" "+(+d)+(yr?", "+y:""); };
     const bandCard = el("div","card"); bandCard.style.marginTop="18px";
     bandCard.append(h2("How today compares with a normal day",
-      "New York City load today (solid) against the range of weekdays so far this "+B.typicalDay.monthLabel+" — the shaded band spans the 10th to 90th percentile, the dashed line is the median. Faint lines are the same calendar date in earlier years."));
+      "New York City load today (solid) against the "+TD.daysUsed+" "+kind+" of the past four weeks"+(TD.windowStart? " ("+apDate(TD.windowStart)+" to "+apDate(TD.windowEnd)+")" : "")+" — the shaded band spans the 10th to 90th percentile, the dashed line is the median. "+(priors.length? "Faint lines are the same weekday one, two and three years back, so a "+(priors[0].weekday||"weekday")+" is compared with a "+(priors[0].weekday||"weekday")+"." : "")));
     bandCard.append(bandChart(todaySlots, B.typicalDay.slots, priors));
     // legend
     const lg=el("div"); lg.style.cssText="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--muted);margin-top:8px";
     const priorColors=["var(--purple)","var(--lime)","var(--orange)"];
     let lgHtml='<span><span style="display:inline-block;width:14px;height:3px;background:var(--amber);vertical-align:middle;margin-right:5px"></span>Today</span>'+
-      '<span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--blue);vertical-align:middle;margin-right:5px"></span>Median weekday</span>'+
+      '<span><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--blue);vertical-align:middle;margin-right:5px"></span>Median, recent '+kind+'</span>'+
       '<span><span style="display:inline-block;width:14px;height:10px;background:var(--blue);opacity:.2;vertical-align:middle;margin-right:5px"></span>Typical range (10th–90th pct)</span>';
-    priors.forEach((p,i)=>{ lgHtml+='<span><span style="display:inline-block;width:14px;height:2px;background:'+priorColors[i%3]+';vertical-align:middle;margin-right:5px"></span>'+p.year+'</span>'; });
+    priors.forEach((p,i)=>{ lgHtml+='<span><span style="display:inline-block;width:14px;height:2px;background:'+priorColors[i%3]+';vertical-align:middle;margin-right:5px"></span>'+apDate(p.date,true)+'</span>'; });
     lg.innerHTML=lgHtml; bandCard.append(lg);
     // peak comparison stats
     const bmini=el("div","miniflex");
-    const todayPeak=L.peakNyc.mw;
-    const medianPeak=Math.max(...B.typicalDay.slots.map(s=>s.median));
-    const vsMedian=medianPeak? Math.round((todayPeak/medianPeak-1)*100):null;
-    bmini.append(mini("Today's peak so far", fmt(todayPeak)+" MW"));
-    if(vsMedian!=null) bmini.append(mini("vs median weekday peak", (vsMedian>0?"+":"")+vsMedian+"%"));
-    priors.forEach(p=>bmini.append(mini(p.year+" this date", fmt(p.peakMW)+" MW peak")));
+    // Compare like with like: load NOW against the typical load at this same 5-minute slot.
+    // (A day's peak so far can't be compared with a full day's peak until the day is over.)
+    const nowSlot = hhmm(L.t).slice(0,3) + String(Math.floor(+hhmm(L.t).slice(3)/5)*5).padStart(2,"0");
+    const typNow = TD.slots.find(s=>s.slot===nowSlot);
+    const vsTyp = typNow?.median ? Math.round((L.nycLoadMW/typNow.median-1)*100) : null;
+    bmini.append(mini("Now vs typical at "+nowSlot+(typNow? " (median "+fmt(typNow.median)+" MW)" : ""), vsTyp==null ? "—" : (vsTyp>0?"+":"")+vsTyp+"%"));
+    bmini.append(mini("Today's peak so far", fmt(L.peakNyc.mw)+" MW · "+hhmm(L.peakNyc.t)));
+    priors.forEach(p=>{
+      const at = p.curve.find(c=>c.slot===nowSlot);
+      bmini.append(mini(apDate(p.date,true)+(p.holiday?" (holiday)":"")+(at? " at "+nowSlot : "")+" · day's peak "+fmt(p.peakMW)+" MW", at? fmt(at.nyc)+" MW" : fmt(p.peakMW)+" MW peak"));
+    });
     bandCard.append(bmini);
     const cav=el("div"); cav.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
-    cav.innerHTML="Year-to-year and day-to-day differences are driven mostly by <b>weather</b> — hot days push air-conditioning load up sharply — not by an underlying trend. The band reflects this month's actual weekdays, so it widens when the month has included both mild and hot days.";
+    cav.innerHTML="Year-to-year and day-to-day differences are driven mostly by <b>weather</b> — hot days push air-conditioning load up sharply — not by an underlying trend. The band reflects the past four weeks' actual "+kind+", so it widens when those weeks included both mild and extreme days.";
     bandCard.append(cav);
     document.getElementById("root").append(bandCard);
   }
@@ -560,8 +607,8 @@ function render(D, B, Pk, GC, HD, DL){
   // zone comparison bars — today's AVERAGE (representative), with the live price as context.
   // A single real-time snapshot can spike on transient congestion, so the bar uses the daily mean.
   const zoneCard = el("div","card");
-  zoneCard.append(h2("Price by zone — today's average", "Average real-time price across the day so far, by zone. Long Island and New York City are transmission-constrained load pockets that consistently price above upstate. Real-time prices spike well above these averages during peak demand — the live figure is shown beneath each bar."));
-  const lastP = D.price[D.price.length-1].zones;
+  zoneCard.append(h2("Price by zone — today's average", "Average real-time price across the day so far, by zone. Long Island and New York City are transmission-constrained load pockets that usually price above upstate. Real-time prices spike well above these averages during peak demand — the live figure is shown beneath each bar."));
+  const lastP = D.price[D.price.length-1]?.zones || {};
   const zStats = {};
   for(const p of D.price){
     for(const [k,o] of Object.entries(p.zones||{})){
@@ -587,7 +634,10 @@ function render(D, B, Pk, GC, HD, DL){
   }
   const liMax = zStats["LONGIL"]?.max, nycMax = zStats["N.Y.C."]?.max;
   const zn = el("div"); zn.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
-  zn.innerHTML = "Long Island sits at the end of constrained transmission, so it is consistently the priciest zone — but the gap widens sharply under stress. Today it averaged $"+fmt(zStats["LONGIL"]?.sum/zStats["LONGIL"]?.n,0)+"/MWh and spiked to $"+fmt(liMax,0)+", versus a New York City average of $"+fmt(zStats["N.Y.C."]?.sum/zStats["N.Y.C."]?.n,0)+" (peak $"+fmt(nycMax,0)+") during this week's heat.";
+  const top = zoneRows[0], nycZ = zoneRows.find(z=>z.k==="N.Y.C.");
+  zn.innerHTML = "Long Island and New York City sit at the end of constrained transmission lines, so they usually price above upstate, and the gap widens sharply when demand is high. "+
+    (top ? "So far today the priciest zone is "+(top.k==="N.Y.C."?"New York City":top.label)+", averaging $"+fmt(top.avg,2)+"/MWh with a high of $"+fmt(top.max,0)+(nycZ && top.k!=="N.Y.C." ? "; New York City is averaging $"+fmt(nycZ.avg,2)+" (high $"+fmt(nycMax,0)+")" : "")+"." : "")+
+    (top && Math.abs(top.avg-zoneRows[zoneRows.length-1].avg) < 3 ? " On a quiet day like this one, the zones bunch within a few dollars of each other." : "");
   zoneCard.append(zn);
 
   const g3 = el("div","grid cols-2"); g3.append(priceCard, zoneCard);
@@ -674,7 +724,7 @@ function render(D, B, Pk, GC, HD, DL){
     document.getElementById("root").append(sectionTag("Peaking power plants"));
     const pk = el("div","card");
     pk.append(h2("Where New York City's peaker plants are",
-      Pk.totalPlants+" grid-serving peaking plants operate inside the five boroughs, totaling "+fmt(Pk.totalNetSummerMW)+" MW of net summer capacity. These are simple-cycle combustion turbines and engines that switch on mainly during high demand — like this week's heat. Sized by capacity; red burns oil or kerosene, orange burns natural gas."));
+      Pk.totalPlants+" grid-serving peaking plants operate inside the five boroughs, totaling "+fmt(Pk.totalNetSummerMW)+" MW of net summer capacity. These are simple-cycle combustion turbines and engines that switch on mainly during high demand, such as summer heat waves. Sized by capacity; red burns oil or kerosene, orange burns natural gas."));
     const mapDiv = el("div"); mapDiv.id="peakerMap"; pk.append(mapDiv);
 
     // located list (always rendered — the verifiable core, and a fallback if the map can't load)
@@ -741,7 +791,7 @@ function render(D, B, Pk, GC, HD, DL){
     document.getElementById("root").append(sectionTag("A year of demand"));
     const yc = el("div","card");
     yc.append(h2("A year of New York City power, day by day",
-      "Every day from "+fday(DL.start)+" to "+fday(DL.end)+" — the city's electricity use as one point per day. The two summer humps are air conditioning; the winter trough is the mild season, when little cools or heats on the grid. NYISO Zone J."));
+      "Every day from "+fday(DL.start)+" to "+fday(DL.end)+" — the city's electricity use as one point per day. The big summer hump is air conditioning; a smaller winter rise comes with long nights and some electric heat; the troughs are spring and fall, when little is cooling or heating. NYISO Zone J."));
 
     const srow = el("div","hero"); srow.style.marginBottom="18px";
     srow.append(
@@ -773,7 +823,7 @@ function render(D, B, Pk, GC, HD, DL){
 
     const src = el("div"); src.style.cssText="color:var(--faint);font-size:12px;margin-top:14px;border-top:1px solid var(--line);padding-top:10px";
     src.innerHTML =
-      "<b>Method.</b> "+DL.source+". For each day: <b>peak</b> is the maximum of that day's 5-minute readings; <b>energy used</b> is the day's average load × 24 hours (an average-times-hours integral, robust to the few extra readings archived days carry). "+DL.nDays+" days shown. This is a real-time metered-load series — behind-the-meter rooftop solar is netted out of it, so true consumption on sunny days runs a little higher. Built by <code>build-daily-load.py</code> (re-runnable); no value is hand-entered. Snapshot "+DL.generatedAt+".";
+      "<b>Method.</b> "+DL.source+". For each day: <b>peak</b> is the maximum of that day's 5-minute readings; <b>energy used</b> is the day's average load × 24 hours (an average-times-hours integral, robust to the few extra readings archived days carry). "+DL.nDays+" days shown"+(DL.missing?.length ? " ("+DL.missing.length+" days in the window are missing because NYISO no longer serves them)" : "")+". Every day once captured is kept, since NYISO's public archive drops days. This is a real-time metered-load series — behind-the-meter rooftop solar is netted out of it, so true consumption on sunny days runs a little higher. Built by <code>build-daily-load.py</code> (re-runnable); no value is hand-entered. Snapshot "+DL.generatedAt+".";
     yc.append(src);
     document.getElementById("root").append(yc);
   }
@@ -1300,7 +1350,7 @@ function buildMethod(D){
     <p>Plant locations come from U.S. EIA Form 860M, the federal inventory of every operating generator (with coordinates, prime mover, capacity and sector). We count a plant as a New York City peaker if it sits in the five boroughs, its prime mover is a simple-cycle combustion turbine (GT) or internal-combustion engine (IC), and it is in the Electric Utility or merchant independent power producer (IPP) sector. That last filter excludes the many hospital, university and commercial backup/cogeneration engines EIA also lists, which are not grid peaking plants. NYISO does not publish unit-level real-time output, so the dashboard cannot show which individual plants are running at a given moment; the "dispatchable fossil generation" figures are statewide fuel-category totals from the live feed, shown as the closest public proxy for peaking activity.</p>
 
     <h4>Historical comparison ("a normal day")</h4>
-    <p>The "how today compares" chart uses NYISO's archived <code>pal</code> files, which are byte-identical to the live feed. The shaded band is the 10th–90th percentile of New York City load for every <b>weekday</b> of the current month so far (today excluded), computed per 5-minute slot; the dashed line is the median. Weekday-only because weekend load is structurally lower. Each archived reading is bucketed to its 5-minute slot and averaged within the day so all days align to a 288-slot grid. Prior-year lines are the same calendar date in earlier years, pulled from NYISO's monthly archive ZIPs. Year-to-year and day-to-day swings are driven mostly by weather, not a trend.</p>
+    <p>The "how today compares" chart uses NYISO's <code>pal</code> load files, which are byte-identical to the live feed. The shaded band is the 10th–90th percentile of New York City load, per 5-minute slot, across the past 28 days that are the same kind of day as today (today excluded): working weekdays, or weekends and holidays (New Year's Day, Memorial Day, July 4, Labor Day, Thanksgiving and the day after, Christmas), which run structurally lower. The dashed line is the median. Each reading is bucketed to its 5-minute slot and averaged within the day so all days align to a 288-slot grid. The day-by-day curves come from a history file this project keeps itself, because NYISO's own current-month archive can be sparse and its per-day files disappear after about eight days. Prior-year lines are the same weekday 52, 104 and 156 weeks back (a week earlier if that day was a holiday and today isn't), from NYISO's monthly archive ZIPs. The "now vs typical" figure compares current load with the median at the same 5-minute slot. Year-to-year and day-to-day swings are driven mostly by weather, not a trend.</p>
 
     <h4>Plain-language conversions</h4>
     <ul>

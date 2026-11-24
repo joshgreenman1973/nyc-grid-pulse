@@ -8,12 +8,20 @@ Source : NYISO monthly `pal` archives (5-minute integrated real-time load by zon
            energy = mean * 24 / 1000 (GWh)                           -- total electricity consumed that day
          mean*24 is used for energy (not a raw sum) because archived days carry a few extra readings
          (~293 vs 288), so an average-times-hours integral is count-robust.
-Window : the most recent ~13 monthly archives, then trimmed to the last 365 available days.
+Window : the 365 calendar days ending with the last complete day.
+Memory : NYISO's public archive is not a reliable record. The current-month zip can be sparse (in
+         November 2026 it held only Nov. 19-24) and per-day files vanish after about eight days. So
+         every day this script has ever computed is carried forward from the previous
+         data/daily-load.json; a day is only ever replaced by a fresh complete computation, never
+         dropped because NYISO stopped serving it. Days still missing are listed in "missing".
+Curves : also writes data/history/nyc-load-curves.json, the 5-minute Zone J curve (288 slots) for
+         each of the last 70 complete days, carried forward the same way. build-baseline.mjs reads it.
 
 Re-run : `python3 build-daily-load.py`. Zips are cached in .cache/ (gitignored) and shared with
          build-heat-demand.py. Every number in data/daily-load.json is computed here; nothing is hand-entered.
 """
 import urllib.request, io, zipfile, csv, json, ssl, os, datetime
+from zoneinfo import ZoneInfo
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(ROOT, ".cache"); os.makedirs(CACHE, exist_ok=True)
@@ -26,7 +34,8 @@ def fetch(url, binary=False):
         return r.read() if binary else r.read().decode("utf-8", "replace")
 
 # ---- month list: current month back 13 months (covers a full rolling year + the partial current month) ----
-today = datetime.date.today()
+# NYISO dates are Eastern; the Actions runner's clock is UTC.
+today = datetime.datetime.now(ZoneInfo("America/New_York")).date()
 months = []
 y, m = today.year, today.month
 for _ in range(14):
@@ -40,6 +49,7 @@ months.reverse()
 # Current-month archive is usually stale by a few days; recent days beyond it are appended from
 # the per-day pal endpoint (YYYYMMDDpal.csv), which retains only the most recent days.
 load_daily = {}
+slots_daily = {}   # date -> {slot index 0..287: [readings]}
 
 def ingest_csv(text):
     for row in csv.reader(io.StringIO(text)):
@@ -50,7 +60,15 @@ def ingest_csv(text):
         except ValueError:
             continue
         mm, dd, yyyy = row[0][:10].split("/")
-        load_daily.setdefault(f"{yyyy}-{mm}-{dd}", []).append(mw)
+        key = f"{yyyy}-{mm}-{dd}"
+        load_daily.setdefault(key, []).append(mw)
+        try:
+            hh, mi = int(row[0][11:13]), int(row[0][14:16])
+            slot = (hh * 60 + mi) // 5
+            if 0 <= slot < 288:
+                slots_daily.setdefault(key, {}).setdefault(slot, []).append(mw)
+        except ValueError:
+            pass
 
 for (yy, mm) in months:
     tag = f"{yy}{mm:02d}01"
@@ -82,24 +100,78 @@ for back in range(0, 8):
         pass
 
 # ---- reduce to per-day stats ----
-rows = []
+fresh = {}
 for key in sorted(load_daily):
     vals = load_daily[key]
-    if len(vals) < 200:   # drop partial days (a full day has ~288 5-min readings)
+    if len(vals) < 200 or key >= today.isoformat():   # drop partial days (a full day has ~288 readings)
         continue
     mean = sum(vals) / len(vals)
-    rows.append({
+    fresh[key] = {
         "date": key,
         "peak": round(max(vals), 1),
         "mean": round(mean, 1),
         "energy": round(mean * 24 / 1000, 2),   # GWh consumed that day
-    })
+    }
 
-if not rows:
+# ---- carry forward every day already captured (NYISO's archive drops days) ----
+path = os.path.join(ROOT, "data", "daily-load.json")
+kept = 0
+if os.path.exists(path):
+    try:
+        for r in json.load(open(path)).get("days", []):
+            if r["d"] not in fresh and r["d"] < today.isoformat():
+                fresh[r["d"]] = {"date": r["d"], "peak": r["peak"], "mean": r["mean"], "energy": r["energy"]}
+                kept += 1
+    except Exception as e:
+        print("  could not read previous daily-load.json:", e)
+print(f"  carried forward {kept} days NYISO no longer serves")
+
+if not fresh:
     raise SystemExit("no complete days -- check source availability")
 
-# ---- trim to the last 365 available days ----
-rows = rows[-365:]
+# ---- window: the 365 calendar days ending with the last complete day ----
+end = datetime.date.fromisoformat(max(fresh))
+start = end - datetime.timedelta(days=364)
+rows, missing = [], []
+d = start
+while d <= end:
+    k = d.isoformat()
+    if k in fresh:
+        rows.append(fresh[k])
+    else:
+        missing.append(k)
+    d += datetime.timedelta(days=1)
+if missing:
+    print(f"  WARNING: {len(missing)} days missing from the window: {missing[:10]}{'...' if len(missing) > 10 else ''}")
+
+# ---- 5-minute curves for the last 70 complete days (read by build-baseline.mjs) ----
+curves_path = os.path.join(ROOT, "data", "history", "nyc-load-curves.json")
+os.makedirs(os.path.dirname(curves_path), exist_ok=True)
+curves = {}
+if os.path.exists(curves_path):
+    try:
+        curves = json.load(open(curves_path)).get("days", {})
+    except Exception as e:
+        print("  could not read previous curves:", e)
+for key, slots in slots_daily.items():
+    if key >= today.isoformat() or len(slots) < 280:   # complete days only
+        continue
+    curve, last = [], None
+    for i in range(288):
+        v = slots.get(i)
+        last = round(sum(v) / len(v), 1) if v else last   # fill a rare missing slot with the prior one
+        curve.append(last)
+    if curve[0] is None:
+        continue
+    curves[key] = curve
+cutoff = (end - datetime.timedelta(days=69)).isoformat()
+curves = {k: v for k, v in sorted(curves.items()) if k >= cutoff}
+json.dump({
+    "generatedAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "source": "NYISO Zone J (N.Y.C.) 5-minute integrated real-time load (pal); readings averaged into 288 five-minute slots per day",
+    "days": curves,
+}, open(curves_path, "w"), separators=(",", ":"))
+print(f"  wrote {len(curves)} daily curves to data/history/nyc-load-curves.json")
 
 # ---- summary stats over the window ----
 peaks = [r["peak"] for r in rows]
@@ -115,6 +187,7 @@ out = {
     "start": rows[0]["date"],
     "end": rows[-1]["date"],
     "nDays": len(rows),
+    "missing": missing,
     "stats": {
         "peakMax": maxpeak["peak"], "peakMaxDate": maxpeak["date"],
         "peakMin": minpeak["peak"], "peakMinDate": minpeak["date"],
@@ -127,7 +200,6 @@ out = {
     # compact: one row per day
     "days": [{"d": r["date"], "peak": r["peak"], "mean": r["mean"], "energy": r["energy"]} for r in rows],
 }
-path = os.path.join(ROOT, "data", "daily-load.json")
 json.dump(out, open(path, "w"), separators=(",", ":"))
 print(f"\nWrote data/daily-load.json  ({len(rows)} days, {rows[0]['date']} -> {rows[-1]['date']})")
 s = out["stats"]

@@ -45,6 +45,18 @@ function easternYmd(date = new Date()) {
   return `${get("year")}${get("month")}${get("day")}`;
 }
 
+// Current Eastern wall-clock time as "YYYY-MM-DDTHH:MM:SS", the same shape
+// parseTs() gives NYISO timestamps, so the two compare as strings.
+function easternIso(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (t) => parts.find((p) => p.type === t).value;
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}`;
+}
+
 // NYISO's MIS server intermittently refuses connections (ECONNREFUSED) or 5xxs
 // for a few seconds at a time, which failed the whole run on an otherwise
 // healthy feed. Retry those; do NOT retry a 404, which is the expected signal
@@ -191,7 +203,15 @@ async function main() {
     if (!priceByTs.has(t)) priceByTs.set(t, {});
     priceByTs.get(t)[zone] = { lbmp, congestion: Number.isFinite(congestion) ? congestion : 0 };
   }
-  const price = [...priceByTs.entries()].map(([t, zones]) => ({ t, zones }));
+  // The realtime_zone file runs about 2.5 hours AHEAD of the clock: settled
+  // 5-minute prices first, then 15-minute advisory (forecast) intervals. Only
+  // rows at or before the current Eastern time are real-time prices; the rest
+  // are NYISO's look-ahead guesses and must never be shown as "now".
+  const nowEt = easternIso();
+  const price = [...priceByTs.entries()]
+    .filter(([t]) => t <= nowEt)
+    .map(([t, zones]) => ({ t, zones }));
+  const advisoryDropped = priceByTs.size - price.length;
 
   // ---- NYC load forecast (isolf, hourly). Column "N.Y.C." ----
   const fcRows = parseCsv(forecastTxt);
@@ -237,8 +257,9 @@ async function main() {
 
   // forecast / day-ahead comparators for the current hour (matched by hour key)
   const curHourKey = lastLoad?.t?.slice(0, 13) ?? null;
+  const priceHourKey = lastPrice?.t?.slice(0, 13) ?? null;
   const forecastNow = curHourKey ? forecastByHour.get(curHourKey) ?? null : null;
-  const dayAheadNow = curHourKey ? dayAheadByHour.get(curHourKey) ?? null : null;
+  const dayAheadNow = priceHourKey ? dayAheadByHour.get(priceHourKey) ?? null : null;
   const loadVsForecastPct =
     forecastNow && lastLoad?.nyc != null ? +(((lastLoad.nyc - forecastNow) / forecastNow) * 100).toFixed(1) : null;
   const rtVsDaPct =
@@ -258,6 +279,7 @@ async function main() {
       nycForecastMW: forecastNow,
       loadVsForecastPct,
       nycPriceLbmp: nycPrice,
+      priceT: lastPrice?.t ?? null,
       nycDayAheadLbmp: dayAheadNow,
       rtVsDaPct,
       nycSpendPerHour,
@@ -285,7 +307,7 @@ async function main() {
       `  NYC price: $${out.latest.nycPriceLbmp}/MWh real-time vs $${out.latest.nycDayAheadLbmp} day-ahead (${out.latest.rtVsDaPct > 0 ? "+" : ""}${out.latest.rtVsDaPct}%)\n` +
       `  -> ~$${out.latest.nycSpendPerHour?.toLocaleString()}/hr wholesale\n` +
       `  clean gen: ${out.latest.cleanPct}%  |  CO2 rate: ${out.latest.co2RateLbsPerMWh} lbs/MWh\n` +
-      `  points: ${fuelMix.length} fuel / ${load.length} load / ${price.length} price`
+      `  points: ${fuelMix.length} fuel / ${load.length} load / ${price.length} price (${advisoryDropped} advisory rows dropped)`
   );
 }
 

@@ -1,34 +1,131 @@
 name: Refresh NYISO grid data
 
-# Keeps data/latest.json current by re-pulling the NYISO real-time feeds.
-# Runs every 15 minutes (the feeds publish at 5-minute resolution).
+# ONE long-lived refresher instead of a 15-minute cron.
+#
+# From Oct. 1, 2026 GitHub's scheduler started only 2-5 runs a day of the old
+# "*/15" cron, so the "live" page sat hours behind NYISO. This job stays up
+# about 5.5 hours, re-pulls the NYISO feeds every 5 minutes (they publish at
+# 5-minute resolution), commits data/latest.json when it changes, rebuilds the
+# daily history files once each new Eastern day, then starts its own successor
+# through workflow_dispatch (dispatch events are not subject to cron delays).
+# The hourly cron is only a backstop: if a refresher is already live, the
+# backstop run exits in seconds. Public repo, so Actions minutes are free.
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch: {}
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      predecessor:
+        description: "Run id of the refresher that started this one (set automatically)"
+        required: false
+        default: ""
+      once:
+        description: "Fetch and commit once, then exit without starting a successor (for testing)"
+        type: boolean
+        default: false
 
 permissions:
-  contents: write
+  contents: write   # commit data/latest.json
+  actions: write    # dispatch the successor
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 350
     steps:
+      # Single writer. Exit before doing anything if an older refresher run is
+      # live. The run that dispatched this one is exempt; wait for it to finish.
+      - name: Yield to a refresher that is already running
+        id: guard
+        if: ${{ github.event.inputs.once != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ME: ${{ github.run_id }}
+          PRED: ${{ github.event.inputs.predecessor }}
+        run: |
+          others() {
+            gh api "repos/$REPO/actions/workflows/refresh.yml/runs?status=in_progress&per_page=50" \
+              --jq "[.workflow_runs[].id | select(. != $ME) | tostring] | join(\" \")"
+          }
+          if [ -n "$PRED" ]; then
+            for i in $(seq 1 20); do
+              case " $(others) " in *" $PRED "*) sleep 15 ;; *) break ;; esac
+            done
+          fi
+          for id in $(others); do
+            if [ "$id" != "${PRED:-0}" ] && [ "$id" -lt "$ME" ]; then
+              echo "Refresher run $id is already live; this run yields."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v5
+        if: steps.guard.outputs.skip != 'true'
+
       - uses: actions/setup-node@v5
+        if: steps.guard.outputs.skip != 'true'
         with:
           node-version: "20"
-      - name: Fetch latest grid data
-        run: node fetch-data.mjs
-      - name: Commit if changed
+
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Refresh every 5 minutes for about 5.5 hours
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          ONCE: ${{ github.event.inputs.once }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/latest.json
-          if git diff --staged --quiet; then
-            echo "No change in grid data."
-          else
-            git commit -m "Refresh NYISO grid snapshot [skip ci]"
-            git push
-          fi
+
+          push() {
+            for i in 1 2 3 4 5; do
+              git pull --rebase -q origin main && git push -q origin HEAD:main && return 0
+              sleep $((i * 5))
+            done
+            echo "::warning::push failed after retries"
+            return 0
+          }
+
+          # Rebuild the history files once per new Eastern day (after 1 a.m.,
+          # once NYISO has posted the previous day in full).
+          daily() {
+            local today hour built
+            today=$(TZ=America/New_York date +%F)
+            hour=$(TZ=America/New_York date +%-H)
+            built=$(node -e 'try{console.log(require("./data/baseline.json").forDate)}catch(e){console.log("")}')
+            if [ "$built" != "$today" ] && [ "$hour" -ge 1 ]; then
+              echo "Rebuilding baseline + daily load for $today"
+              python3 build-daily-load.py || echo "::warning::daily-load build failed"
+              node build-baseline.mjs || echo "::warning::baseline build failed"
+              git add data/baseline.json data/daily-load.json data/history
+              git diff --staged --quiet || { git commit -q -m "Rebuild historical baseline + daily load [skip ci]"; push; }
+            fi
+          }
+
+          deadline=$(( $(date +%s) + 330 * 60 ))
+          while :; do
+            node fetch-data.mjs || echo "::warning::fetch failed this round"
+            git add data/latest.json
+            git diff --staged --quiet || { git commit -q -m "Refresh NYISO grid snapshot [skip ci]"; push; }
+            daily
+            [ "$ONCE" = "true" ] && break
+            [ $(( $(date +%s) + 300 )) -ge "$deadline" ] && break
+            sleep 300
+          done
+
+      - name: Start the successor
+        if: steps.guard.outputs.skip != 'true' && github.event.inputs.once != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api -X POST "repos/$REPO/actions/workflows/refresh.yml/dispatches" \
+            -f ref=main -f "inputs[predecessor]=${{ github.run_id }}"
+          echo "Successor dispatched."

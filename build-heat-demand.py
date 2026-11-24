@@ -15,7 +15,9 @@ import urllib.request, io, zipfile, csv, json, ssl, os, datetime
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(ROOT, ".cache"); os.makedirs(CACHE, exist_ok=True)
 os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
-YEARS = list(range(2019, 2026))     # 2019..2025 (extend as new summers complete)
+# Every summer from 2019 through the last one that has finished (June-August complete by September).
+_now = datetime.date.today()
+YEARS = list(range(2019, _now.year + (1 if _now.month >= 9 else 0)))
 MONTHS = [6, 7, 8]
 LAT, LON = 40.78, -73.97
 ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
