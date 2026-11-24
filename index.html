@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>NYC Grid Pulse — New York City's electricity in real time</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Gloock&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -22,8 +22,9 @@
     --text: var(--fg); --muted: var(--fg2); --faint: #7f857e;
     --amber: var(--sun); --green: var(--mint); --red: var(--vermilion);
     --blue: var(--cobalt); --purple: var(--lilac); --lime: #c6e25a; --gas: var(--rose);
-    --sans: 'Karla', system-ui, -apple-system, sans-serif;
-    --display: 'Archivo', system-ui, sans-serif;
+    --sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --display: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --title: 'Gloock', Georgia, serif;
     --mono: var(--sans);
     color-scheme: dark;
   }
@@ -36,13 +37,11 @@
 
   /* opening: top line, name, one plain finding, lede */
   .topline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; font-size: 13px; color: var(--fg2); padding-bottom: 14px; border-bottom: 1px solid var(--line2); }
-  .topline .state { font-weight: 700; color: var(--mint); }
-  .topline .state.late { color: var(--sun); }
-  .topline .state.stale { color: var(--vermilion); }
-  h1 { font-family: var(--display); font-variation-settings: "wdth" 100; font-size: clamp(1.9rem,3.2vw,2.6rem); font-weight: 800; letter-spacing: -.01em; line-height: 1.05; margin: 26px 0 12px; }
-  .finding { font-family: var(--display); font-variation-settings: "wdth" 96; font-size: clamp(1.2rem,1.9vw,1.55rem); font-weight: 600; line-height: 1.3; max-width: 860px; margin: 0 0 12px; }
-  .finding .n { color: var(--accent); }
-  .lede { max-width: 800px; color: var(--fg2); margin: 0 0 8px; }
+  .topline .state { font-weight: 700; color: var(--fg); }
+  h1 { font-family: var(--title); font-size: clamp(1.9rem,3.2vw,2.6rem); font-weight: 400; letter-spacing: 0; line-height: 1.05; margin: 26px 0 12px; }
+  .finding { font-family: var(--display); font-size: clamp(1.2rem,1.9vw,1.55rem); font-weight: 400; line-height: 1.3; max-width: 40ch; margin: 0 0 12px; text-wrap: pretty; }
+  .finding .n { font-weight: 700; }
+  .lede { max-width: 62ch; color: var(--fg2); margin: 0 0 8px; }
   .lede b { color: var(--fg); }
   .banner { background: var(--sun); color: #121412; padding: 14px 18px; margin: 18px 0 4px; font-weight: 600; }
   .banner b { color: #121412; }
@@ -53,9 +52,9 @@
   .cols-2 { grid-template-columns: 1.15fr .85fr; }
   .cols-2b { grid-template-columns: 1fr 1fr; }
   .card { border-top: 1px solid var(--line2); padding: 22px 0 8px; margin-top: 8px; }
-  .card h2 { font-family: var(--display); font-variation-settings: "wdth" 100; font-size: 21px; font-weight: 700; margin: 0 0 4px; letter-spacing: -.005em; }
+  .card h2 { font-family: var(--display); font-size: 1.2rem; font-weight: 700; margin: 0 0 4px; }
   .card .desc { color: var(--fg2); font-size: 15px; margin: 0 0 16px; max-width: 780px; }
-  .section-tag { font-family: var(--display); font-variation-settings: "wdth" 100; font-size: clamp(1.45rem,2.3vw,1.85rem); font-weight: 800; color: var(--fg); margin: 58px 0 2px; letter-spacing: -.01em; }
+  .section-tag { font-family: var(--display); font-size: 1.6rem; font-weight: 700; line-height: 1.12; color: var(--fg); margin: 58px 0 2px; }
 
   /* figures written as keyed sentences, not tiles */
   .runs { margin: 14px 0 8px; }
@@ -71,7 +70,7 @@
   .hero, .keyrow { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 34px; margin: 10px 0 6px; }
   .stat { padding: 0; }
   .stat .label { display: none; }
-  .stat .big { font-family: var(--display); font-size: 20px; font-weight: 700; line-height: 1.25; display: inline; }
+  .stat .big { font-family: var(--display); font-size: 1.05rem; font-weight: 700; line-height: 1.25; display: inline; }
   .stat .unit { font-weight: 700; color: inherit; }
   .stat .note { display: inline; font-size: 15px; color: var(--fg2); }
   .stat .note::before { content: " — "; }
@@ -81,7 +80,7 @@
   .mix { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: center; }
   .donut-wrap { position: relative; width: 200px; height: 200px; }
   .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-  .donut-center .pct { font-family: var(--display); font-size: 34px; font-weight: 800; color: var(--mint); }
+  .donut-center .pct { font-family: var(--display); font-size: 30px; font-weight: 700; color: var(--fg); }
   .donut-center .cap { font-size: 13px; color: var(--fg2); }
   .legend { display: flex; flex-direction: column; gap: 8px; }
   .legrow { display: grid; grid-template-columns: 14px 1fr auto auto; gap: 10px; align-items: center; font-size: 15px; }
@@ -102,7 +101,7 @@
 
   .miniflex { display:flex; gap: 8px 30px; flex-wrap: wrap; margin-top: 8px; }
   .mini .k { font-size: 13.5px; color: var(--fg2); }
-  .mini .v { font-family: var(--display); font-size: 19px; font-weight: 700; margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .mini .v { font-family: var(--display); font-size: 1.05rem; font-weight: 600; margin-top: 1px; font-variant-numeric: tabular-nums; }
 
   /* zone bars and city bars */
   .zbar { display: grid; grid-template-columns: 112px 1fr 96px; align-items: center; gap: 12px; margin: 6px 0; font-size: 15px; }
@@ -111,26 +110,25 @@
   .zbar .zfill { height: 100%; }
   .zbar .zval { text-align: right; font-variant-numeric: tabular-nums; line-height:1.2; font-weight: 600; }
   .zbar .zval .znow { display:block; font-size: 12.5px; color: var(--faint); font-weight: 400; }
-  .zbar.nyc .zname { color: var(--sun); font-weight: 700; }
+  .zbar.nyc .zname { color: var(--fg); font-weight: 700; }
   .gcrow { display: grid; grid-template-columns: 170px 1fr 70px; align-items: center; gap: 12px; margin: 7px 0; }
   .gcname { font-size: 15px; line-height: 1.25; }
   .gcname .gcregion { display: block; font-size: 12.5px; color: var(--faint); }
   .gcname .gcflag { font-size: 12px; color: var(--faint); margin-left: 5px; }
   .gctrack { background: var(--bg2); height: 22px; overflow: hidden; }
   .gcfill { height: 100%; }
-  .gcrow.hl .gcname { color: var(--sun); font-weight: 700; }
+  .gcrow.hl .gcname { color: var(--fg); font-weight: 700; }
   .gcval { text-align: right; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
 
   .lead { }
-  .dsstats { display: flex; gap: 8px 30px; flex-wrap: wrap; margin: 8px 0 14px; }
-  .dsstat .v { font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1.1; display: inline; }
-  .dsstat .k { display: inline; font-size: 15px; color: var(--fg2); margin-left: 6px; }
   .dsbar { display: flex; height: 26px; overflow: hidden; margin-top: 4px; }
   .dsbar > div { min-width: 1px; }
   .dslegend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 14px; }
   .dslegend .li { display: flex; align-items: center; gap: 6px; color: var(--fg2); }
   .dslegend .sw { width: 11px; height: 11px; flex-shrink: 0; }
   .dslegend .mw { color: var(--faint); }
+
+  .keyed::before { content: ""; display: inline-block; width: .62em; height: .62em; margin-right: .3em; background: var(--k); }
 
   /* the long explanations fold away */
   details.more { margin-top: 12px; border-top: 1px solid var(--line2); }
@@ -140,8 +138,7 @@
   details.more[open] summary::after { content: " −"; }
   details.more .body { font-size: 15px; color: var(--fg2); padding: 2px 0 8px; max-width: 820px; }
   .solarnote, .ipnote { font-size: 15px; color: var(--fg2); margin-top: 14px; }
-  .solarnote b { color: var(--lime); }
-  .ipnote b { color: var(--lilac); }
+
 
   /* Champlain Hudson meter */
   .gauge { position: relative; height: 26px; background: var(--bg2); margin: 14px 0 6px; }
@@ -155,22 +152,22 @@
   .hours > div.lo { background: var(--mint); opacity: 1; }
   .hours > div.hi { background: var(--vermilion); opacity: 1; }
   .hourlabels { display: grid; grid-template-columns: repeat(24, 1fr); font-size: 12px; color: var(--faint); margin-top: 4px; }
-  .hourlabels span { text-align: center; }
+  .hourlabels span { text-align: center; white-space: nowrap; overflow: visible; }
   .days { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 24px; }
   .days li { font-size: 15px; color: var(--fg2); }
-  .days li b { display: block; font-family: var(--display); font-size: 19px; color: var(--fg); }
-  .days li.hot b { color: var(--vermilion); }
+  .days li b { display: block; font-family: var(--display); font-size: 1.05rem; font-weight: 600; color: var(--fg); }
+  .days li.hot b::after { content: ""; display: inline-block; width: .6em; height: .6em; margin-left: .35em; background: var(--vermilion); }
 
   /* methodology */
   details.method { margin-top: 56px; border-top: 1px solid var(--line); padding: 4px 0; }
-  details.method summary { cursor: pointer; padding: 16px 0; font-family: var(--display); font-weight: 700; font-size: 19px; list-style: none; }
+  details.method summary { cursor: pointer; padding: 16px 0; font-family: var(--display); font-weight: 700; font-size: 1.2rem; list-style: none; }
   details.method summary::-webkit-details-marker { display:none; }
   details.method summary::after { content: " +"; color: var(--fg2); font-weight: 400; }
   details.method[open] summary::after { content: " −"; }
   details.method .body { padding-bottom: 18px; color: var(--fg2); font-size: 15px; max-width: 860px; }
   details.method h4 { color: var(--fg); font-size: 15px; margin: 18px 0 6px; }
   details.method a { color: var(--fg); }
-  details.method code { background: var(--bg2); padding: 1px 5px; font-size: 13.5px; color: var(--cyan); font-family: ui-monospace, Menlo, monospace; }
+  details.method code { font-family: inherit; font-size: inherit; color: var(--fg); font-weight: 600; }
   details.method table { width:100%; border-collapse: collapse; font-size: 14px; margin-top: 6px;}
   details.method td, details.method th { text-align:left; padding: 4px 8px; border-bottom: 1px solid var(--line2); }
   details.method th { color: var(--fg); }
@@ -421,15 +418,6 @@ function render(D, B, Pk, GC, HD, DL, DG, PR){
     dleft.append(donut(dsOrdered, ds.totalGWh, ds.zeroEmissionPct, {colors:DS_COLORS, unit:"GWh", centerCap:"zero-emission"}));
     top.append(dleft, legend(dsOrdered, ds.totalGWh, {colors:DS_COLORS, unit:"GWh"}));
     lead.append(top);
-    // supporting stat tiles
-    const stats = el("div","dsstats"); stats.style.marginTop="20px";
-    const mk = (v,k,color)=>{ const d=el("div","dsstat"); const a=el("div","v"); a.textContent=v; a.style.color=color; const b=el("div","k"); b.textContent=k; d.append(a,b); return d; };
-    stats.append(
-      mk(ds.fossilPct+"%","fossil fuel","var(--red)"),
-      mk(ds.nuclearPct+"%","nuclear","var(--purple)"),
-      mk(ds.zeroEmissionPct+"%","zero-emission","var(--green)")
-    );
-    lead.append(stats);
     const dsc = el("div"); dsc.style.cssText="color:var(--faint);font-size:12.5px;margin-top:14px";
     dsc.innerHTML = "Roughly <b>"+ds.fossilPct+"% fossil and "+ds.zeroEmissionPct+"% zero-emission</b>, with <b>no nuclear</b> — versus <b>"+ds.statewideZeroEmissionPct+"% zero-emission statewide</b>. Transmission constraints limit how much of upstate's clean power reaches the city. Total downstate production "+fmt(ds.totalGWh)+" GWh in "+ds.year+". Annual figures, not real-time. These are "+ds.year+" figures and predate the Champlain Hudson Power Express (see below), which began delivering Canadian hydropower to the city in June 2026. Source: "+ds.source;
     lead.append(dsc);
@@ -564,7 +552,7 @@ function render(D, B, Pk, GC, HD, DL, DG, PR){
     inCity.innerHTML = "The mix above is <b>statewide</b>. Power generated within the five boroughs and Westchester is about <b>"+ic.gasPct+"% natural gas, with 0% nuclear and 0% hydro</b> (EPA eGRID, "+ic.year+"). New York's nuclear and large hydro are all upstate; Indian Point — the only plant near the city — closed in 2021, so the "+fmt(nucNow,1)+"% nuclear shown above does not come from the city's own generation.";
     inCity.append(sb);
     const ichist = el("div"); ichist.style.cssText="margin-top:6px";
-    ichist.innerHTML = "<b style='color:var(--orange)'>The Indian Point arc.</b> When it ran, the Indian Point nuclear plant just north of the city was widely cited as about a quarter of the electricity used in New York City and Westchester (a figure that is debated, since power can't be metered to a specific load). Its closure in 2021 removed the area's main carbon-free baseload — largely replaced, in the near term, by natural gas.";
+    ichist.innerHTML = "<b class='keyed' style='--k:var(--orange)'>The Indian Point arc.</b> When it ran, the Indian Point nuclear plant just north of the city was widely cited as about a quarter of the electricity used in New York City and Westchester (a figure that is debated, since power can't be metered to a specific load). Its closure in 2021 removed the area's main carbon-free baseload — largely replaced, in the near term, by natural gas.";
     inCity.append(ichist);
     const ictail = el("div"); ictail.style.cssText="margin-top:6px"; ictail.innerHTML = "This is generation <i>located</i> in the city; New York City also imports a large share of its power, and imported electricity can't be cleanly traced to a specific fuel.";
     inCity.append(ictail);
@@ -661,9 +649,9 @@ function render(D, B, Pk, GC, HD, DL, DG, PR){
       let txt = apDay(tomorrow)+": NYISO expects the city's demand to peak near <b>"+fmt(pk.mw)+" MW around "+apHour(pk.h)+"</b> and bottom out near "+fmt(tr.mw)+" MW around "+apHour(tr.h)+". ";
       if(havePrice){
         const pr = hrs.map(h=>h.price);
-        txt += "The day-ahead market has already priced tomorrow's power, from $"+fmt(Math.min(...pr),0)+" to $"+fmt(Math.max(...pr),0)+" a megawatt-hour. The cheapest hours are <b style='color:var(--mint)'>"+hourRuns([...lo])+"</b>; the costliest are <b style='color:var(--vermilion)'>"+hourRuns([...hi])+"</b>.";
+        txt += "The day-ahead market has already priced tomorrow's power, from $"+fmt(Math.min(...pr),0)+" to $"+fmt(Math.max(...pr),0)+" a megawatt-hour. The cheapest hours are <b class='keyed' style='--k:var(--mint)'>"+hourRuns([...lo])+"</b>; the costliest are <b class='keyed' style='--k:var(--vermilion)'>"+hourRuns([...hi])+"</b>.";
       } else {
-        txt += "The day-ahead market posts tomorrow's prices around late morning; until then the bars show forecast demand, with the four quietest hours, <b style='color:var(--mint)'>"+hourRuns([...lo])+"</b>, and the four busiest, <b style='color:var(--vermilion)'>"+hourRuns([...hi])+"</b>.";
+        txt += "The day-ahead market posts tomorrow's prices around late morning; until then the bars show forecast demand, with the four quietest hours, <b class='keyed' style='--k:var(--mint)'>"+hourRuns([...lo])+"</b>, and the four busiest, <b class='keyed' style='--k:var(--vermilion)'>"+hourRuns([...hi])+"</b>.";
       }
       p.innerHTML = tidy(txt); card.append(p);
       card.append(h4mini(havePrice ? "Day-ahead price by hour, New York City ($/MWh)" : "Forecast demand by hour, New York City (MW)"));
@@ -672,7 +660,7 @@ function render(D, B, Pk, GC, HD, DL, DG, PR){
         b.addEventListener("mousemove",e=>showTip('<div class="t-time">'+apHour(h.h)+' to '+apHour(h.h+1)+'</div><div class="t-row"><span>Forecast demand</span><b>'+fmt(h.mw)+' MW</b></div>'+(h.price!=null?'<div class="t-row"><span>Day-ahead price</span><b>$'+fmt(h.price,2)+'</b></div>':''), e.clientX, e.clientY));
         b.addEventListener("mouseleave",hideTip); bars.append(b); }
       card.append(bars);
-      const hl = el("div","hourlabels"); for(const h of hrs) { const sp=el("span"); sp.textContent = h.h%6===0 ? (h.h===0?"12a":h.h===12?"noon":(h.h%12)+(h.h<12?"a":"p")) : ""; hl.append(sp); } card.append(hl);
+      const hl = el("div","hourlabels"); for(const h of hrs) { const sp=el("span"); sp.textContent = h.h%6===0 ? apHour(h.h,0) : ""; hl.append(sp); } card.append(hl);
       const why = el("p","desc"); why.style.marginTop="12px";
       why.textContent = "Running a dishwasher, laundry or a car charger in the low hours draws power when the grid is under the least strain. Most Con Edison customers pay the same rate at every hour, so the saving goes to the grid, not usually to the bill; customers on Con Edison's time-of-use plan do pay less off-peak.";
       card.append(why);
@@ -1168,7 +1156,7 @@ function mini(k,v){ const w=el("div","mini"); const a=el("div","k"); a.textConte
 function statCard(label, big, unit, color, note){
   const c=el("div","stat"); c.style.setProperty("--accent",color);
   const l=el("div","label"); l.textContent=label;
-  const b=el("div","big"); b.textContent=big; b.style.color=color;
+  const b=el("div","big"); b.textContent=big;
   const u=el("span","unit"); u.textContent=" "+unit; b.append(u);
   const n=el("span","note"); n.textContent=label+". "+note;
   c.append(l,b,n); return c;
