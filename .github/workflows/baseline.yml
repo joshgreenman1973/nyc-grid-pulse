@@ -39,5 +39,5 @@ jobs:
           else
             git commit -m "Rebuild historical baseline + daily load [skip ci]"
             # the refresh loop commits every few minutes, so rebase onto it first
-            for i in 1 2 3 4 5; do git pull --rebase -q origin main && git push -q && break; sleep $((i*5)); done
+            for i in 1 2 3 4 5; do git pull --rebase -X theirs -q origin main && git push -q && break; sleep $((i*5)); done
           fi

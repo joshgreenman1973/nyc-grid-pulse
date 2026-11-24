@@ -84,12 +84,25 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # If someone else pushed a change to the same data file, the snapshot just
+          # fetched is the newer one, so a conflict resolves in its favour (-X theirs:
+          # in a rebase, "theirs" is the commit being replayed). If the rebase still
+          # cannot finish, drop the local commit and match origin; the next round
+          # fetches a fresh snapshot. Either way the loop never stays wedged.
           push() {
             for i in 1 2 3 4 5; do
-              git pull --rebase -q origin main && git push -q origin HEAD:main && return 0
+              if git pull --rebase -X theirs -q origin main; then
+                git push -q origin HEAD:main && return 0
+              else
+                git rebase --abort 2>/dev/null || true
+                git fetch -q origin main && git reset -q --hard origin/main
+                echo "::warning::rebase failed; reset to origin/main"
+                return 0
+              fi
               sleep $((i * 5))
             done
             echo "::warning::push failed after retries"
+            git fetch -q origin main && git reset -q --hard origin/main
             return 0
           }
 
