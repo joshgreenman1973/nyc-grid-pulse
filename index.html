@@ -4,205 +4,222 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>NYC Grid Pulse — New York City's electricity in real time</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+  /* House system v5 ("black"), adapted for a live dashboard. Old variable names are
+     kept as aliases so the chart code keeps reading them; values are v5 tokens. */
   :root {
-    --bg: #0a0e16;
-    --bg2: #0e1422;
-    --panel: #131b2c;
-    --panel2: #182338;
-    --line: #243348;
-    --text: #eaf0fb;
-    --muted: #8492ab;
-    --faint: #5a6880;
-    --amber: #ffb020;
-    --green: #34d399;
-    --red: #f97362;
-    --cyan: #38bdf8;
-    --blue: #60a5fa;
-    --purple: #a78bfa;
-    --lime: #a3e635;
-    --orange: #fb923c;
-    --gas: #f59e0b;
-    --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 36px rgba(0,0,0,.45);
-    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    --bg: #111311; --bg2: #1b1e1b; --fg: #f2f3ef; --fg2: #a2a8a1;
+    --line: #3a3f3a; --line2: #262a26; --grid: rgba(255,255,255,.13);
+    --cobalt:#5b86ff; --vermilion:#ff6a45; --sun:#ffd23f; --mint:#3fd68f;
+    --rose:#ff6fae; --cyan:#3cc8d8; --orange:#ff9f2e; --lilac:#b79bff;
+    --accent: var(--sun);
+    /* aliases used throughout the page code */
+    --panel: var(--bg); --panel2: var(--bg2);
+    --text: var(--fg); --muted: var(--fg2); --faint: #7f857e;
+    --amber: var(--sun); --green: var(--mint); --red: var(--vermilion);
+    --blue: var(--cobalt); --purple: var(--lilac); --lime: #c6e25a; --gas: var(--rose);
+    --sans: 'Karla', system-ui, -apple-system, sans-serif;
+    --display: 'Archivo', system-ui, sans-serif;
+    --mono: var(--sans);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
-  body {
-    background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(96,165,250,.10), transparent 60%),
-      radial-gradient(900px 500px at 0% 0%, rgba(255,176,32,.06), transparent 55%),
-      var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    -webkit-font-smoothing: antialiased;
-    line-height: 1.5;
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: var(--fg); text-decoration-color: var(--fg2); text-underline-offset: 2px; }
+  b, strong { font-weight: 700; color: var(--fg); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 22px 22px 90px; }
 
-  /* header */
-  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
-  .brand { display: flex; align-items: center; gap: 14px; }
-  .pulse-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: pulse 2.4s infinite; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55);} 70% { box-shadow: 0 0 0 12px rgba(52,211,153,0);} 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0);} }
-  h1 { font-size: 26px; margin: 0; letter-spacing: -.4px; }
-  h1 span { color: var(--muted); font-weight: 500; }
-  .sub { color: var(--muted); font-size: 14px; margin-top: 3px; }
-  .updated { text-align: right; font-size: 12.5px; color: var(--muted); }
-  .updated b { color: var(--text); font-variant-numeric: tabular-nums; }
-  .updated .live { color: var(--green); font-weight: 600; }
-  .updated .live.late { color: var(--amber); }
-  .updated .live.stale { color: var(--red); }
-  .pulse-dot.late { background: var(--amber); animation: none; }
-  .pulse-dot.stale { background: var(--red); animation: none; }
+  /* opening: top line, name, one plain finding, lede */
+  .topline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; font-size: 13px; color: var(--fg2); padding-bottom: 14px; border-bottom: 1px solid var(--line2); }
+  .topline .state { font-weight: 700; color: var(--mint); }
+  .topline .state.late { color: var(--sun); }
+  .topline .state.stale { color: var(--vermilion); }
+  h1 { font-family: var(--display); font-variation-settings: "wdth" 100; font-size: clamp(1.9rem,3.2vw,2.6rem); font-weight: 800; letter-spacing: -.01em; line-height: 1.05; margin: 26px 0 12px; }
+  .finding { font-family: var(--display); font-variation-settings: "wdth" 96; font-size: clamp(1.2rem,1.9vw,1.55rem); font-weight: 600; line-height: 1.3; max-width: 860px; margin: 0 0 12px; }
+  .finding .n { color: var(--accent); }
+  .lede { max-width: 800px; color: var(--fg2); margin: 0 0 8px; }
+  .lede b { color: var(--fg); }
+  .banner { background: var(--sun); color: #121412; padding: 14px 18px; margin: 18px 0 4px; font-weight: 600; }
+  .banner b { color: #121412; }
 
-  /* hero stats */
-  .hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
-  .stat { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 16px; padding: 18px 18px 16px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
-  .stat::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--amber)); opacity: .85; }
-  .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
-  .stat .big { font-family: var(--mono); font-size: 34px; font-weight: 600; letter-spacing: -1px; margin-top: 8px; line-height: 1; font-variant-numeric: tabular-nums; }
-  .stat .unit { font-size: 15px; color: var(--muted); font-weight: 500; }
-  .stat .note { font-size: 12.5px; color: var(--faint); margin-top: 8px; }
-
-  /* layout cards */
-  .grid { display: grid; gap: 18px; align-items: start; }
+  /* sections and cards: no boxes, shadows or rounded corners */
+  .sec { margin-top: 10px; }
+  .grid { display: grid; gap: 34px; align-items: start; }
   .cols-2 { grid-template-columns: 1.15fr .85fr; }
   .cols-2b { grid-template-columns: 1fr 1fr; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
-  .card h2 { font-size: 17px; margin: 0 0 2px; letter-spacing: -.2px; }
-  .card .desc { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
-  .section-tag { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--faint); font-weight: 700; margin: 34px 0 14px; display:flex; align-items:center; gap:10px;}
-  .section-tag::after { content:""; flex:1; height:1px; background: var(--line); }
+  .card { border-top: 1px solid var(--line2); padding: 22px 0 8px; margin-top: 8px; }
+  .card h2 { font-family: var(--display); font-variation-settings: "wdth" 100; font-size: 21px; font-weight: 700; margin: 0 0 4px; letter-spacing: -.005em; }
+  .card .desc { color: var(--fg2); font-size: 15px; margin: 0 0 16px; max-width: 780px; }
+  .section-tag { font-family: var(--display); font-variation-settings: "wdth" 100; font-size: clamp(1.45rem,2.3vw,1.85rem); font-weight: 800; color: var(--fg); margin: 58px 0 2px; letter-spacing: -.01em; }
 
-  /* fuel mix donut + legend */
-  .gentop { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; margin-top: 6px; }
-  .mix { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: center; }
+  /* figures written as keyed sentences, not tiles */
+  .runs { margin: 14px 0 8px; }
+  .runrow { display: grid; grid-template-columns: 190px 1fr 270px; gap: 4px 14px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line2); font-size: 14.5px; }
+  .runrow .bar { height: 12px; background: var(--line2); }
+  .runrow .bar i { display: block; height: 100%; }
+  .runrow .sub { color: var(--faint); font-size: 12.5px; }
+  .runrow .nm b { font-weight: 600; }
+  .runscale { display: grid; grid-template-columns: 190px 1fr 270px; gap: 14px; font-size: 12px; color: var(--faint); }
+  .runscale span { display: flex; justify-content: space-between; }
+  .rulelist { margin: 6px 0 0; padding-left: 18px; }
+  .rulelist li { margin: 0 0 10px; }
+  .hero, .keyrow { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 34px; margin: 10px 0 6px; }
+  .stat { padding: 0; }
+  .stat .label { display: none; }
+  .stat .big { font-family: var(--display); font-size: 20px; font-weight: 700; line-height: 1.25; display: inline; }
+  .stat .unit { font-weight: 700; color: inherit; }
+  .stat .note { display: inline; font-size: 15px; color: var(--fg2); }
+  .stat .note::before { content: " — "; }
+
+  /* fuel mix */
+  .gentop { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; margin-top: 6px; }
+  .mix { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: center; }
   .donut-wrap { position: relative; width: 200px; height: 200px; }
   .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-  .donut-center .pct { font-family: var(--mono); font-size: 32px; font-weight: 600; color: var(--green); }
-  .donut-center .cap { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-  .legend { display: flex; flex-direction: column; gap: 9px; }
-  .legrow { display: grid; grid-template-columns: 14px 1fr auto auto; gap: 10px; align-items: center; font-size: 13.5px; }
-  .swatch { width: 13px; height: 13px; border-radius: 4px; }
-  .legrow .mw { font-family: var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-  .legrow .pct { font-family: var(--mono); color: var(--text); width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
-
-  .splitbar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; margin-top: 4px; border: 1px solid var(--line); }
-  .splitbar > div { display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:#0a0e16; }
+  .donut-center .pct { font-family: var(--display); font-size: 34px; font-weight: 800; color: var(--mint); }
+  .donut-center .cap { font-size: 13px; color: var(--fg2); }
+  .legend { display: flex; flex-direction: column; gap: 8px; }
+  .legrow { display: grid; grid-template-columns: 14px 1fr auto auto; gap: 10px; align-items: center; font-size: 15px; }
+  .swatch { width: 13px; height: 13px; }
+  .legrow .mw { color: var(--fg2); font-variant-numeric: tabular-nums; }
+  .legrow .pct { color: var(--fg); width: 52px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .splitbar { display: flex; height: 26px; overflow: hidden; margin-top: 4px; }
+  .splitbar > div { display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#121412; }
 
   /* charts */
   .chart { width: 100%; }
   svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .axis text { fill: var(--faint); font-size: 11px; font-family: var(--mono); }
-  .axis line, .axis path { stroke: var(--line); }
-  .gridline { stroke: var(--line); stroke-dasharray: 2 4; opacity: .55; }
-  .tip { position: fixed; pointer-events: none; background: #05080f; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; font-size: 12.5px; color: var(--text); box-shadow: 0 8px 24px rgba(0,0,0,.5); z-index: 30; opacity: 0; transition: opacity .08s; max-width: 240px; }
-  .tip .t-time { color: var(--muted); font-size: 11px; margin-bottom: 5px; font-family: var(--mono);}
+  svg text { font-family: var(--sans); }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .tip { position: fixed; pointer-events: none; background: var(--bg2); border: 1px solid var(--line); padding: 9px 11px; font-size: 13.5px; color: var(--fg); z-index: 30; opacity: 0; transition: opacity .08s; max-width: 250px; }
+  .tip .t-time { color: var(--fg2); font-size: 12.5px; margin-bottom: 5px; }
   .tip .t-row { display:flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
-  .tip .t-row b { font-family: var(--mono); }
 
-  .miniflex { display:flex; gap: 28px; flex-wrap: wrap; margin-top: 4px; }
-  .mini .k { font-size: 12px; color: var(--muted); }
-  .mini .v { font-family: var(--mono); font-size: 20px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .miniflex { display:flex; gap: 8px 30px; flex-wrap: wrap; margin-top: 8px; }
+  .mini .k { font-size: 13.5px; color: var(--fg2); }
+  .mini .v { font-family: var(--display); font-size: 19px; font-weight: 700; margin-top: 1px; font-variant-numeric: tabular-nums; }
 
-  /* zone bars */
-  .zbar { display: grid; grid-template-columns: 100px 1fr 108px; align-items: center; gap: 12px; margin: 7px 0; font-size: 13.5px; }
-  .zbar .zname { color: var(--muted); }
-  .zbar .ztrack { background: var(--bg2); border-radius: 6px; height: 22px; position: relative; overflow:hidden; border: 1px solid var(--line); }
-  .zbar .zfill { height: 100%; border-radius: 5px 0 0 5px; }
-  .zbar .zval { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; line-height:1.25; }
-  .zbar .zval .znow { display:block; font-size: 11px; color: var(--faint); }
-  .zbar.nyc .zname { color: var(--amber); font-weight: 700; }
+  /* zone bars and city bars */
+  .zbar { display: grid; grid-template-columns: 112px 1fr 96px; align-items: center; gap: 12px; margin: 6px 0; font-size: 15px; }
+  .zbar .zname { color: var(--fg2); }
+  .zbar .ztrack { background: var(--bg2); height: 20px; position: relative; overflow:hidden; }
+  .zbar .zfill { height: 100%; }
+  .zbar .zval { text-align: right; font-variant-numeric: tabular-nums; line-height:1.2; font-weight: 600; }
+  .zbar .zval .znow { display:block; font-size: 12.5px; color: var(--faint); font-weight: 400; }
+  .zbar.nyc .zname { color: var(--sun); font-weight: 700; }
+  .gcrow { display: grid; grid-template-columns: 170px 1fr 70px; align-items: center; gap: 12px; margin: 7px 0; }
+  .gcname { font-size: 15px; line-height: 1.25; }
+  .gcname .gcregion { display: block; font-size: 12.5px; color: var(--faint); }
+  .gcname .gcflag { font-size: 12px; color: var(--faint); margin-left: 5px; }
+  .gctrack { background: var(--bg2); height: 22px; overflow: hidden; }
+  .gcfill { height: 100%; }
+  .gcrow.hl .gcname { color: var(--sun); font-weight: 700; }
+  .gcval { text-align: right; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
 
-  .gcrow { display: grid; grid-template-columns: 156px 1fr 84px; align-items: center; gap: 12px; margin: 8px 0; }
-  .gcname { font-size: 13.5px; line-height: 1.25; }
-  .gcname .gcregion { display: block; font-size: 11px; color: var(--faint); }
-  .gcname .gcflag { font-size: 10px; color: var(--faint); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 5px; vertical-align: middle; }
-  .gctrack { background: var(--bg2); border: 1px solid var(--line); border-radius: 6px; height: 24px; overflow: hidden; }
-  .gcfill { height: 100%; border-radius: 5px 0 0 5px; }
-  .gcrow.hl .gcname { color: var(--amber); font-weight: 700; }
-  .gcrow.hl .gctrack { border-color: var(--amber); }
-  .gcval { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; font-size: 13.5px; }
-
-  .lead { border-color: rgba(249,115,98,.35); background: linear-gradient(180deg, rgba(249,115,98,.05), var(--panel)); }
-  .dsstats { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 18px; }
-  .dsstat { flex: 1; min-width: 130px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
-  .dsstat .v { font-family: var(--mono); font-size: 30px; font-weight: 600; letter-spacing: -1px; line-height: 1; }
-  .dsstat .k { font-size: 12px; color: var(--muted); margin-top: 7px; }
-  .dsbar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); margin-top: 4px; }
+  .lead { }
+  .dsstats { display: flex; gap: 8px 30px; flex-wrap: wrap; margin: 8px 0 14px; }
+  .dsstat .v { font-family: var(--display); font-size: 26px; font-weight: 800; line-height: 1.1; display: inline; }
+  .dsstat .k { display: inline; font-size: 15px; color: var(--fg2); margin-left: 6px; }
+  .dsbar { display: flex; height: 26px; overflow: hidden; margin-top: 4px; }
   .dsbar > div { min-width: 1px; }
-  .dslegend { display: flex; flex-wrap: wrap; gap: 9px 18px; margin-top: 13px; font-size: 12.5px; }
-  .dslegend .li { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-  .dslegend .sw { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
-  .dslegend .mw { font-family: var(--mono); color: var(--faint); }
-  .solarnote { background: rgba(163,230,53,.07); border: 1px solid rgba(163,230,53,.28); border-radius: 10px; padding: 11px 13px; font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+  .dslegend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 14px; }
+  .dslegend .li { display: flex; align-items: center; gap: 6px; color: var(--fg2); }
+  .dslegend .sw { width: 11px; height: 11px; flex-shrink: 0; }
+  .dslegend .mw { color: var(--faint); }
+
+  /* the long explanations fold away */
+  details.more { margin-top: 12px; border-top: 1px solid var(--line2); }
+  details.more summary { cursor: pointer; padding: 10px 0 4px; font-size: 15px; font-weight: 700; color: var(--fg); list-style: none; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::after { content: " +"; color: var(--fg2); font-weight: 400; }
+  details.more[open] summary::after { content: " −"; }
+  details.more .body { font-size: 15px; color: var(--fg2); padding: 2px 0 8px; max-width: 820px; }
+  .solarnote, .ipnote { font-size: 15px; color: var(--fg2); margin-top: 14px; }
   .solarnote b { color: var(--lime); }
+  .ipnote b { color: var(--lilac); }
+
+  /* Champlain Hudson meter */
+  .gauge { position: relative; height: 26px; background: var(--bg2); margin: 14px 0 6px; }
+  .gauge .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--cyan); }
+  .gauge .cap { position: absolute; right: 0; top: 30px; font-size: 13px; color: var(--fg2); }
+  .gauge-scale { display: flex; justify-content: space-between; font-size: 13px; color: var(--fg2); margin-bottom: 14px; }
+
+  /* look-ahead */
+  .hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 120px; margin-top: 8px; }
+  .hours > div { background: var(--cobalt); opacity: .55; }
+  .hours > div.lo { background: var(--mint); opacity: 1; }
+  .hours > div.hi { background: var(--vermilion); opacity: 1; }
+  .hourlabels { display: grid; grid-template-columns: repeat(24, 1fr); font-size: 12px; color: var(--faint); margin-top: 4px; }
+  .hourlabels span { text-align: center; }
+  .days { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 24px; }
+  .days li { font-size: 15px; color: var(--fg2); }
+  .days li b { display: block; font-family: var(--display); font-size: 19px; color: var(--fg); }
+  .days li.hot b { color: var(--vermilion); }
 
   /* methodology */
-  details.method { margin-top: 30px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px; }
-  details.method summary { cursor: pointer; padding: 16px 0; font-weight: 600; font-size: 15px; list-style: none; }
+  details.method { margin-top: 56px; border-top: 1px solid var(--line); padding: 4px 0; }
+  details.method summary { cursor: pointer; padding: 16px 0; font-family: var(--display); font-weight: 700; font-size: 19px; list-style: none; }
   details.method summary::-webkit-details-marker { display:none; }
-  details.method summary::before { content: "▸ "; color: var(--muted); }
-  details.method[open] summary::before { content: "▾ "; }
-  details.method .body { padding-bottom: 18px; color: var(--muted); font-size: 13.5px; }
-  details.method h4 { color: var(--text); font-size: 13.5px; margin: 16px 0 6px; }
-  details.method a { color: var(--blue); }
-  details.method code { font-family: var(--mono); background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; color: var(--cyan);}
-  details.method table { width:100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px;}
-  details.method td, details.method th { text-align:left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
-  details.method th { color: var(--text); }
-  details.method td.n { font-family: var(--mono); text-align:right; }
+  details.method summary::after { content: " +"; color: var(--fg2); font-weight: 400; }
+  details.method[open] summary::after { content: " −"; }
+  details.method .body { padding-bottom: 18px; color: var(--fg2); font-size: 15px; max-width: 860px; }
+  details.method h4 { color: var(--fg); font-size: 15px; margin: 18px 0 6px; }
+  details.method a { color: var(--fg); }
+  details.method code { background: var(--bg2); padding: 1px 5px; font-size: 13.5px; color: var(--cyan); font-family: ui-monospace, Menlo, monospace; }
+  details.method table { width:100%; border-collapse: collapse; font-size: 14px; margin-top: 6px;}
+  details.method td, details.method th { text-align:left; padding: 4px 8px; border-bottom: 1px solid var(--line2); }
+  details.method th { color: var(--fg); }
+  details.method td.n { text-align:right; }
 
-  footer { margin-top: 40px; color: var(--faint); font-size: 12.5px; text-align: center; }
-  footer a { color: var(--muted); }
+  footer { margin-top: 40px; color: var(--faint); font-size: 13.5px; }
+  footer a { color: var(--fg2); }
 
   @media (max-width: 880px) {
-    .hero { grid-template-columns: repeat(2, 1fr); }
     .cols-2, .cols-2b, .gentop { grid-template-columns: 1fr; }
     .mix { grid-template-columns: 1fr; justify-items: center; }
   }
-  @media (max-width: 480px) {
-    .hero { grid-template-columns: 1fr; }
-    h1 { font-size: 22px; }
+  @media (max-width: 560px) {
+    .hero, .keyrow { grid-template-columns: 1fr; }
+    .runrow, .runscale { grid-template-columns: 1fr; }
+    .runscale > div:first-child, .runscale > div:last-child { display: none; }
+    .zbar { grid-template-columns: 92px 1fr 84px; }
+    .gcrow { grid-template-columns: 120px 1fr 56px; }
   }
-  .err { background: #2a1316; border:1px solid #5a2a2e; color:#ffb4ad; padding:14px 16px; border-radius:12px; font-size:14px; }
+  .err { background: var(--bg2); color: var(--vermilion); padding: 14px 16px; font-size: 15px; }
 
-  .toggle { display:inline-flex; background: var(--bg2); border:1px solid var(--line); border-radius: 9px; padding: 3px; gap:2px; flex-shrink:0; }
-  .toggle button { background: transparent; border:0; color: var(--muted); font: inherit; font-size: 12.5px; font-weight:600; padding: 5px 11px; border-radius: 7px; cursor:pointer; white-space:nowrap; }
-  .toggle button.active { background: var(--panel2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-  .ipnote { background: rgba(167,139,250,.08); border:1px solid rgba(167,139,250,.28); border-radius:10px; padding:11px 13px; font-size:12.5px; color:var(--muted); margin-top:16px; }
-  .ipnote b { color: var(--purple); }
+  .toggle { display:inline-flex; border:1px solid var(--line); flex-shrink:0; }
+  .toggle button { background: transparent; border:0; color: var(--fg2); font: inherit; font-size: 14px; font-weight:600; padding: 6px 12px; cursor:pointer; white-space:nowrap; }
+  .toggle button.active { background: var(--fg); color: var(--bg); }
 
-  #peakerMap { height: 360px; border-radius: 12px; border:1px solid var(--line); margin-top:4px; background: var(--bg2); }
-  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #05080f; color: var(--text); border:1px solid var(--line); }
-  .leaflet-popup-content { font-family: var(--sans); font-size: 12.5px; margin: 10px 12px; }
-  .leaflet-popup-content b { color: var(--amber); }
+  #peakerMap { height: 380px; margin-top:4px; background: var(--bg2); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--bg2); color: var(--fg); border-radius: 0; box-shadow: none; border:1px solid var(--line); }
+  .leaflet-popup-content { font-family: var(--sans); font-size: 14px; margin: 10px 12px; }
+  .leaflet-popup-content b { color: var(--sun); }
   .leaflet-container { font-family: var(--sans); }
   .plist-wrap { overflow-x:auto; }
-  .plist { width:100%; border-collapse:collapse; font-size:13px; margin-top:14px; }
-  .plist th { text-align:left; color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.5px; padding:6px 8px; border-bottom:1px solid var(--line); }
-  .plist td { padding:6px 8px; border-bottom:1px solid var(--line); }
-  .plist td.n { font-family:var(--mono); text-align:right; font-variant-numeric:tabular-nums; }
-  .plist .fuel-oil { color: var(--red); }
+  .plist { width:100%; border-collapse:collapse; font-size:14.5px; margin-top:14px; }
+  .plist th { text-align:left; color:var(--fg2); font-weight:600; font-size:13.5px; padding:6px 8px; border-bottom:1px solid var(--line); }
+  .plist td { padding:6px 8px; border-bottom:1px solid var(--line2); }
+  .plist td.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .plist .fuel-oil { color: var(--vermilion); }
   .plist .fuel-gas { color: var(--orange); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div>
-      <div class="brand">
-        <div class="pulse-dot"></div>
-        <h1>NYC Grid Pulse <span>· live electricity</span></h1>
-      </div>
-      <div class="sub">How much power New York City is pulling, where it's generated and what it costs — drawn from New York Independent System Operator (NYISO) real-time feeds.</div>
-    </div>
-    <div class="updated" id="updated">Loading…</div>
-  </header>
+  <div class="topline">
+    <span>Source: New York Independent System Operator (NYISO) public feeds, refreshed every 5 minutes</span>
+    <span id="updated">Loading…</span>
+  </div>
+  <h1>NYC Grid Pulse</h1>
+  <p class="finding" id="finding"></p>
+  <p class="lede" id="lede"></p>
+  <div id="banner"></div>
 
   <div id="root"></div>
 
@@ -262,6 +279,37 @@ function showTip(html, x, y){ tip.innerHTML=html; tip.style.opacity=1; tip.style
 function hideTip(){ tip.style.opacity=0; }
 function hhmm(t){ const d=t.split("T")[1]; return d.slice(0,5); }
 function pad2(n){ return String(n).padStart(2,"0"); }
+// AP-style clock time from "…THH:MM:SS": 9 a.m., 9:05 a.m., noon, midnight
+// "8:35 a.m.." -> "8:35 a.m." when a time ends a sentence (also across a closing </b>)
+function tidy(h){ return h.replace(/([ap])\.m\.(<\/b>)?\./g, "$1.m.$2"); }
+function apTime(t){ const [h,m]=hhmm(t).split(":").map(Number); return apHour(h, m); }
+function apHour(h, m=0){
+  if(m===0 && h===12) return "noon"; if(m===0 && (h===0||h===24)) return "midnight";
+  const ap = h%24<12 ? "a.m." : "p.m."; const h12 = h%12 || 12;
+  return (m ? h12+":"+pad2(m) : h12)+" "+ap;
+}
+// contiguous hour runs, e.g. [1,2,3,17,18] -> "1 to 4 a.m. and 5 to 7 p.m." (each hour is an hour-long block)
+function hourRuns(hours){
+  const hs=[...new Set(hours)].sort((a,b)=>a-b); const runs=[];
+  for(const h of hs){ const r=runs[runs.length-1]; if(r && h===r[1]+1) r[1]=h; else runs.push([h,h]); }
+  const one = ([a,b]) => { const s=apHour(a), e=apHour(b+1);
+    const sa=s.split(" ")[1], ea=e.split(" ")[1];
+    return (sa && sa===ea ? s.split(" ")[0] : s)+" to "+e; };
+  return runs.map(one).join(runs.length>2 ? ", " : " and ").replace(/, ([^,]*)$/, " and $1");
+}
+const WEEKDAY=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MON_AP=["Jan.","Feb.","March","April","May","June","July","Aug.","Sept.","Oct.","Nov.","Dec."];
+function apDay(iso){ const [y,m,d]=iso.split("-").map(Number); const dt=new Date(Date.UTC(y,m-1,d)); return WEEKDAY[dt.getUTCDay()]+", "+MON_AP[m-1]+" "+d; }
+function addDaysIso(iso, n){ const [y,m,d]=iso.split("-").map(Number); const dt=new Date(Date.UTC(y,m-1,d+n)); return dt.toISOString().slice(0,10); }
+// round axis ticks: steps of 1, 2, 2.5 or 5 times a power of ten
+function niceScale(lo, hi, target=4){
+  if(!(hi>lo)) hi = lo + 1;
+  const raw=(hi-lo)/target, mag=Math.pow(10, Math.floor(Math.log10(raw)));
+  const step=[1,2,2.5,5,10].map(k=>k*mag).find(st=>st>=raw);
+  const a=Math.floor(lo/step)*step, b=Math.ceil(hi/step)*step, ticks=[];
+  for(let v=a; v<=b+step/2; v+=step) ticks.push(+v.toFixed(6));
+  return {lo:a, hi:b, step, ticks, dec: step<1 ? (step<0.1?2:1) : (step%1 ? 1 : 0)};
+}
 
 function cssVar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || v; }
 
@@ -278,8 +326,12 @@ function load(){
     fetch("data/heat-demand.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
     // daily-load.json is a static historical build (build-daily-load.py); optional
     fetch("data/daily-load.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+    // daily-grid.json: a year of price, mix, carbon, imports and the Quebec line (build-daily-grid.py)
+    fetch("data/history/daily-grid.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+    // peaker-runs.json: how many hours each peaker ran, from EPA emissions reporting (build-peaker-runs.py)
+    fetch("data/peaker-runs.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
   ])
-    .then(([D, B, Pk, GC, HD, DL]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk, GC, HD, DL); })
+    .then(([D, B, Pk, GC, HD, DL, DG, PR]) => { document.getElementById("root").innerHTML=""; render(D, B, Pk, GC, HD, DL, DG, PR); })
     .catch(e => {
       document.getElementById("root").innerHTML =
         '<div class="err">Could not load grid data ('+e.message+'). The snapshot file <code>data/latest.json</code> may not have been generated yet. Run <code>node fetch-data.mjs</code>.</div>';
@@ -300,7 +352,7 @@ function easternNowIso(){
 function minutesBetween(a, b){ return Math.round((new Date(b+"Z") - new Date(a+"Z")) / 60000); }
 function ageText(min){ return min < 60 ? min+" min" : (min/60 < 10 ? (min/60).toFixed(1).replace(/\.0$/,"") : Math.round(min/60))+" hr"; }
 
-function render(D, B, Pk, GC, HD, DL){
+function render(D, B, Pk, GC, HD, DL, DG, PR){
   const L = D.latest;
   const nowEt = easternNowIso();
 
@@ -323,12 +375,11 @@ function render(D, B, Pk, GC, HD, DL){
   const readingAge = Math.max(0, minutesBetween(L.t, nowEt));
   const fresh = readingAge <= 20, late = !fresh && readingAge <= 90;
   const state = fresh ? "" : late ? " late" : " stale";
-  const badge = fresh ? "● LIVE" : late ? "● DELAYED" : "● NOT CURRENT";
-  document.querySelector(".pulse-dot")?.setAttribute("class", "pulse-dot"+state);
+  const badge = fresh ? "Live" : late ? "Delayed" : "Not current";
   const dateNote = L.t.slice(0,10) !== nowEt.slice(0,10) ? " on "+L.t.slice(0,10) : "";
   document.getElementById("updated").innerHTML =
-    '<div><span class="live'+state+'">'+badge+'</span> · reading of <b>'+hhmm(L.t)+'</b> ET'+dateNote+'</div>' +
-    '<div style="margin-top:3px">'+(fresh ? "NYISO posts a new reading every 5 minutes" : "This reading is "+ageText(readingAge)+" old; the page refreshes itself as new data arrives")+'</div>';
+    '<span class="state'+state+'">'+badge+'</span>: reading of '+apTime(L.t)+' Eastern'+dateNote+
+    (fresh ? "" : ", "+ageText(readingAge)+" old; the page updates itself as new data arrives");
 
   // ---------- running wholesale spend today (integrate load × price over 5-min steps) ----------
   const priceByT = new Map(D.price.map(p => [p.t, p.zones?.["N.Y.C."]?.lbmp]));
@@ -343,27 +394,23 @@ function render(D, B, Pk, GC, HD, DL){
 
   const centsKwh = L.nycPriceLbmp!=null ? (L.nycPriceLbmp/10) : null; // $/MWh ÷ 10 = ¢/kWh
 
-  // ---------- hero ----------
-  const hero = el("div","hero");
-  hero.append(
-    statCard("NYC power draw right now", fmt(L.nycLoadMW), "MW", "var(--amber)",
-      "Megawatts (MW) of load in NYISO Zone J (New York City) — today's peak so far "+fmt(L.peakNyc.mw)+" MW at "+hhmm(L.peakNyc.t)),
-    statCard("Share of New York State", fmt(L.nycSharePct,1)+"%", "of statewide load", "var(--blue)",
-      "Statewide load right now: "+fmt(L.stateLoadMW)+" MW across 11 zones"),
-    statCard("Wholesale price", "$"+fmt(L.nycPriceLbmp,2), "/MWh · "+fmt(centsKwh,1)+"¢/kWh", "var(--red)",
-      "Real-time locational price for New York City"+(L.priceT? " at "+hhmm(L.priceT) : "")+" — energy only, before delivery and taxes"),
-    statCard("Wholesale spend rate", "$"+fmt(Math.round(L.nycSpendPerHour/1000))+"K", "/hour", "var(--green)",
-      "≈ NYC load × NYC price · about $"+fmt(spendToday/1e6,2)+"M on energy so far today")
-  );
-  document.getElementById("root").append(hero);
+  // Every block below appends to one of these, so the page reads top to bottom in this order
+  // whatever order the code builds things in.
+  const SEC = {};
+  const root = document.getElementById("root");
+  for(const k of ["lead","chpe","mix","today","cost","ahead","carbon","history","year","heat","peakers","cities"]){
+    SEC[k] = el("section","sec"); root.append(SEC[k]);
+  }
+
+  buildOpening(D, B, HD, {nowEt, mwhToday, spendToday, centsKwh});
 
   // ================= WHERE THE POWER COMES FROM =================
-  document.getElementById("root").append(sectionTag("Where the power comes from"));
+  SEC.mix.append(sectionTag("Where the power comes from"));
 
   // ---- LEAD: downstate (NYC region) mix — the primary picture, with the marquee donut ----
   if(GC && GC.downstate){
     const ds = GC.downstate;
-    const DS_COLORS = {"Dual fuel (gas/oil)":"#f59e0b","Natural gas":"#fb923c","Oil":"#f97362","Hydro":"#38bdf8","Waste energy":"#8492ab","Solar":"#a3e635","Offshore wind":"#34d399"};
+    const DS_COLORS = {"Dual fuel (gas/oil)":"var(--gas)","Natural gas":"var(--orange)","Oil":"var(--red)","Hydro":"var(--cyan)","Waste energy":"var(--faint)","Solar":"var(--lime)","Offshore wind":"var(--green)"};
     const dsOrdered = ds.mix.map(m=>({name:m.fuel, mw:m.gwh, pct:m.pct}));
     const lead = el("div","card lead");
     lead.append(h2("How the New York City region is powered",
@@ -387,26 +434,44 @@ function render(D, B, Pk, GC, HD, DL){
     dsc.innerHTML = "Roughly <b>"+ds.fossilPct+"% fossil and "+ds.zeroEmissionPct+"% zero-emission</b>, with <b>no nuclear</b> — versus <b>"+ds.statewideZeroEmissionPct+"% zero-emission statewide</b>. Transmission constraints limit how much of upstate's clean power reaches the city. Total downstate production "+fmt(ds.totalGWh)+" GWh in "+ds.year+". Annual figures, not real-time. These are "+ds.year+" figures and predate the Champlain Hudson Power Express (see below), which began delivering Canadian hydropower to the city in June 2026. Source: "+ds.source;
     lead.append(dsc);
     if(GC.nycSolar){
-      const s=GC.nycSolar; const sn=el("div","solarnote");
-      sn.innerHTML = "<b>Solar is growing.</b> New York City had about <b>"+fmt(s.installedMW)+" MW</b> of solar installed citywide in "+s.year+" — roughly "+fmt(s.installedMW/s.goalMW*100,0)+"% of the city's goal of <b>"+fmt(s.goalMW/1000,0)+" gigawatt ("+fmt(s.goalMW)+" MW) by "+s.goalYear+"</b>, generating about "+fmt(s.generationGWh)+" GWh that year. "+s.note+" Source: "+s.source;
+      const s=GC.nycSolar; const sn=fold("Solar in the city, against its goal", "New York City had about <b>"+fmt(s.installedMW)+" MW</b> of solar installed citywide in "+s.year+" — roughly "+fmt(s.installedMW/s.goalMW*100,0)+"% of the city's goal of <b>"+fmt(s.goalMW/1000,0)+" gigawatt ("+fmt(s.goalMW)+" MW) by "+s.goalYear+"</b>, generating about "+fmt(s.generationGWh)+" GWh that year. "+s.note+" Source: "+s.source);
       lead.append(sn);
     }
-    document.getElementById("root").append(lead);
+    SEC.mix.append(lead);
 
-    // ---- Champlain Hudson Power Express: imported hydro folded into net imports, not a fuel slice ----
-    const chpe = el("div","card");
-    chpe.append(h2("The new Canadian hydro line and where it shows up in the mix",
-      "The Champlain Hudson Power Express (CHPE), a 1,250 MW (1.25 GW) high-voltage line carrying Hydro-Québec hydropower to a converter station in Astoria, Queens, reached commercial operation on May 13, 2026 and began delivering contracted power on June 1, 2026."));
-    const cb = el("div"); cb.style.cssText="color:var(--muted);font-size:13px;line-height:1.55";
-    cb.innerHTML = "CHPE can supply up to <b>20% of New York City's electricity demand</b> — about a million homes — delivering roughly <b>10.4 terawatt-hours a year</b> of firm Quebec hydropower under a 25-year contract. For context, in 2024 the downstate region — New York City and its neighbors — produced more than <b>90% of its electricity from fossil fuels and only about 3% from hydro</b>.";
-    chpe.append(cb);
-    const cwhy = el("div"); cwhy.style.cssText="background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.25);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:13px";
-    cwhy.innerHTML = "<b style='color:var(--cyan)'>Why it isn't a clean-hydro slice above.</b> The live and downstate mixes count electricity <b>generated inside New York</b>, broken out by fuel. CHPE power is <b>imported</b> — generated in Canada and delivered across the border — so in grid accounting it counts as <i>interchange</i>, not in-state generation, and NYISO doesn't break imports out by fuel. So it can't show up as a hydro wedge above. It <b>is</b> counted in the <b>net imports</b> line beneath the live mix (statewide load minus in-state generation), which folds every intertie flow — CHPE plus New England and PJM — into a single figure. That line shows how much imported power the city leans on; it just can't say how much is Quebec hydro versus other sources, so the clean share of the fuel slices still <b>understates</b> the carbon-free electricity reaching the city.";
-    chpe.append(cwhy);
-    const ccav = el("div"); ccav.style.cssText="margin-top:10px;font-size:12px;color:var(--faint)";
-    ccav.innerHTML = "How much CHPE actually delivers depends on Hydro-Québec's supply: several years of low water have drawn down Quebec's reservoirs — the utility cut its electricity exports sharply in 2022–2024 — while Canadian demand from data centers and industry keeps rising. Hydro-Québec says it is managing its reserves and will keep limiting exports as conditions require. Sources: CBC and The Energy Mix, 2024–2026.";
-    chpe.append(ccav);
-    document.getElementById("root").append(chpe);
+  }
+
+  // ---- Champlain Hudson Power Express, live: the one clean intertie row in NYISO's flow feed ----
+  {
+    const C = (D.chpe||[]);
+    SEC.chpe.append(sectionTag("The Quebec hydro line, live"));
+    const ch = el("div","card"); ch.style.borderTop="0";
+    const last = C[C.length-1];
+    const cap = last?.limit || 1250;
+    const p = el("p","desc"); p.style.cssText="font-size:17px;color:var(--fg);max-width:820px";
+    if(last){
+      const avg = C.reduce((a,c)=>a+c.mw,0)/C.length;
+      const mx = C.reduce((m,c)=>c.mw>m.mw?c:m, C[0]), mn = C.reduce((m,c)=>c.mw<m.mw?c:m, C[0]);
+      const share = L.nycLoadMW ? last.mw/L.nycLoadMW*100 : null;
+      p.innerHTML = "At "+apTime(last.t)+", <b>"+fmt(last.mw)+" megawatts</b> of Hydro-Québec power was scheduled across the Champlain Hudson Power Express into Astoria, Queens. That is "+fmt(last.mw/cap*100,0)+"% of the line's "+fmt(cap)+" MW"+(share!=null? " and about "+fmt(share,0)+"% of what the city is drawing" : "")+". Since midnight the schedule has averaged "+fmt(avg)+" MW, between "+fmt(mn.mw)+" and "+fmt(mx.mw)+" MW.";
+    } else {
+      p.textContent = "NYISO's interchange feed carried no schedule for the line in this snapshot.";
+    }
+    ch.append(p);
+    if(last){
+      const g = el("div","gauge"); const f = el("div","fill"); f.style.width = Math.max(0,Math.min(100,last.mw/cap*100))+"%"; g.append(f); ch.append(g);
+      const sc = el("div","gauge-scale"); sc.innerHTML = "<span>0</span><span>"+fmt(cap)+" MW, the line's capacity</span>"; ch.append(sc);
+      ch.append(h4mini("Scheduled flow since midnight, megawatts"));
+      ch.append(lineChart(C.map(c=>({t:c.t, v:c.mw})), {color:cssVar("--cyan"), unit:"MW", fill:true}));
+    }
+    const note = el("p","desc"); note.style.marginTop="12px";
+    note.textContent = "These are NYISO's scheduled flows on the line, the figure it posts every 5 minutes for each link to a neighboring grid; metered flow can differ slightly. The line reached commercial operation on May 13, 2026, and contracted deliveries began June 1, 2026. It is built to deliver about 10.4 terawatt-hours a year under a 25-year contract, up to about a fifth of the city's demand, roughly a million homes' worth.";
+    ch.append(note);
+    ch.append(fold("Why this hydropower isn't a slice of the fuel mix below",
+      "The live and downstate mixes count electricity <b>generated inside New York</b>, broken out by fuel. Power on this line is generated in Canada and delivered across the border, so in grid accounting it is <i>interchange</i>, not in-state generation, and NYISO's fuel-mix feed doesn't break imports out by fuel. It is counted in the <b>net imports</b> line beneath the live mix (statewide load minus in-state generation), which folds every intertie together: this line plus New England and PJM. That is why the clean share of the fuel slices understates the carbon-free electricity reaching the city."));
+    ch.append(fold("Will Quebec keep sending power?",
+      "How much the line actually carries depends on Hydro-Québec's supply. Several years of low water drew down Quebec's reservoirs, and the utility cut its electricity exports sharply in 2022–2024, while Canadian demand from data centers and industry keeps rising. Hydro-Québec says it is managing its reserves and will keep limiting exports as conditions require. Sources: CBC and The Energy Mix, 2024–2026."));
+    SEC.chpe.append(ch);
   }
 
   const total = L.genTotalMW;
@@ -453,16 +518,15 @@ function render(D, B, Pk, GC, HD, DL){
     // withIndianPoint() holds generation total constant, so this figure is the same
     // under either toggle. Approximate: ignores line losses and pumped-storage charging.
     const netImp = L.stateLoadMW - st.total;
-    const imp = el("div"); imp.style.cssText="margin-top:13px;padding-top:11px;border-top:1px dashed var(--line)";
+    const imp = el("div"); imp.style.cssText="margin-top:14px";
     if(netImp > 0){
       const impPct = netImp / L.stateLoadMW * 100;
-      const row = el("div"); row.style.cssText="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)";
-      const sw=el("span"); sw.style.cssText="width:11px;height:11px;border-radius:3px;flex-shrink:0;background:repeating-linear-gradient(45deg,var(--cyan),var(--cyan) 2px,transparent 2px,transparent 4px);border:1px solid var(--cyan)";
+      const row = el("div"); row.style.cssText="display:flex;align-items:center;gap:6px;font-size:15px;color:var(--muted)";
+      const sw=el("span"); sw.style.cssText="width:11px;height:11px;flex-shrink:0;background:repeating-linear-gradient(45deg,var(--cyan),var(--cyan) 2px,transparent 2px,transparent 4px);border:1px solid var(--cyan)";
       const t=document.createElement("span");
       t.innerHTML="Net imports <span class='mw'>+"+fmt(netImp)+" MW · "+fmt(impPct,1)+"% of statewide load</span>";
       row.append(sw,t); imp.append(row);
-      const note=el("div"); note.style.cssText="margin-top:6px;font-size:11.5px;color:var(--faint);line-height:1.5";
-      note.innerHTML="<b>Derived figure.</b> Statewide load minus in-state generation: power flowing in over the interties, including Quebec hydro on the Champlain Hudson Power Express, plus New England and PJM. NYISO's real-time mix counts only in-state generation, so these megawatts show up here rather than as a slice above. For scale, New York imported <b>38,785 GWh</b> and exported 18,148 GWh in 2024 — net imports near <b>20,600 GWh</b>, roughly a seventh of the state's electricity (NYISO 2025 Gold Book). Approximate — excludes line losses and pumped-storage charging.";
+      const note=fold("How net imports are figured", "Statewide load minus in-state generation: power flowing in over the interties, including Quebec hydro on the Champlain Hudson Power Express, plus New England and PJM. NYISO's real-time mix counts only in-state generation, so these megawatts show up here rather than as a slice above. For scale, New York imported <b>38,785 GWh</b> and exported 18,148 GWh in 2024 — net imports near <b>20,600 GWh</b>, roughly a seventh of the state's electricity (NYISO 2025 Gold Book). Approximate — excludes line losses and pumped-storage charging.");
       imp.append(note);
     } else {
       const note=el("div"); note.style.cssText="font-size:11.5px;color:var(--faint);line-height:1.5";
@@ -480,38 +544,36 @@ function render(D, B, Pk, GC, HD, DL){
   drawMix(false);
 
   // Behind-the-meter rooftop solar disclosure (static; the feed can't see it)
-  const btm = el("div"); btm.style.cssText="font-size:11.5px;color:var(--faint);line-height:1.5;margin-top:13px;padding-top:11px;border-top:1px dashed var(--line)";
-  btm.innerHTML = "<b style='color:var(--lime)'>Rooftop solar, about 7.5 GW of it, is also missing.</b> New York has roughly <b>7,500 MW</b> of behind-the-meter solar (NYISO 2025 Gold Book) that this feed can't see: it sits on the customer side of the meter, so it registers as <i>reduced demand</i>, not supply. On a clear spring midday it generates as much as <b>~4,800 MW</b>, and it shaves about <b>1,600 MW — near 5%</b> — off the summer peak, all invisible above. That's why the carbon-free share is understated on sunny days. It does not distort the net-imports line: rooftop output is netted out of both load and generation, so it cancels.";
+  const btm = fold("Rooftop solar, about 7.5 GW of it, is missing from this mix", "New York has roughly <b>7,500 MW</b> of behind-the-meter solar (NYISO 2025 Gold Book) that this feed can't see: it sits on the customer side of the meter, so it registers as <i>reduced demand</i>, not supply. On a clear spring midday it generates as much as <b>~4,800 MW</b>, and it shaves about <b>1,600 MW — near 5%</b> — off the summer peak, all invisible above. That's why the carbon-free share is understated on sunny days. It does not distort the net-imports line: rooftop output is netted out of both load and generation, so it cancels.");
   mixCard.append(btm);
 
   // CLCPA policy context (static; persists across the toggle)
   const renPct = total ? ((L.fuelCats["Hydro"]||0)+(L.fuelCats["Wind"]||0)+(L.fuelCats["Other Renewables"]||0))/total*100 : null;
-  const clcpa = el("div"); clcpa.style.cssText="background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.25);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:16px";
-  clcpa.innerHTML = "<b style='color:var(--green)'>State climate law.</b> New York's Climate Leadership and Community Protection Act (2019) requires 70% of electricity from <b>renewable</b> sources by 2030 and a 100% <b>zero-emission</b> grid by 2040. The 70% goal counts renewables only — wind, solar and hydro, about "+fmt(renPct,0)+"% of statewide generation right now — while the carbon-free share above also includes nuclear. In a July 2024 draft review, state regulators (the New York State Energy Research and Development Authority and the Department of Public Service) projected the 70% target will not be met until about 2033.";
+  const clcpa = fold("The state climate law and its 2030 target", "New York's Climate Leadership and Community Protection Act (2019) requires 70% of electricity from <b>renewable</b> sources by 2030 and a 100% <b>zero-emission</b> grid by 2040. The 70% goal counts renewables only — wind, solar and hydro, about "+fmt(renPct,0)+"% of statewide generation right now — while the carbon-free share above also includes nuclear. In a July 2024 draft review, state regulators (the New York State Energy Research and Development Authority and the Department of Public Service) projected the 70% target will not be met until about 2033.");
   mixCard.append(clcpa);
 
   // What's generated inside NYC itself (statewide mix is misleading for the city)
   if(GC && GC.nycInCity){
     const ic = GC.nycInCity;
     const nucNow = total ? (L.fuelCats["Nuclear"]||0)/total*100 : 0;
-    const inCity = el("div"); inCity.style.cssText="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:12px";
+    const inCity = el("div"); inCity.style.cssText="";
     const sb = el("div","splitbar"); sb.style.margin="9px 0 4px";
     const gd = el("div"); gd.style.width=ic.gasPct+"%"; gd.style.background=cssVar("--orange"); gd.style.color="#1a1206"; gd.textContent=ic.gasPct+"% natural gas";
     const od = el("div"); od.style.width=(100-ic.gasPct)+"%"; od.style.background=cssVar("--line");
     sb.append(gd, od);
-    inCity.innerHTML = "<b style='color:var(--orange)'>What's generated inside New York City.</b> The mix above is <b>statewide</b>. Power generated within the five boroughs and Westchester is about <b>"+ic.gasPct+"% natural gas, with 0% nuclear and 0% hydro</b> (EPA eGRID, "+ic.year+"). New York's nuclear and large hydro are all upstate; Indian Point — the only plant near the city — closed in 2021, so the "+fmt(nucNow,1)+"% nuclear shown above does not come from the city's own generation.";
+    inCity.innerHTML = "The mix above is <b>statewide</b>. Power generated within the five boroughs and Westchester is about <b>"+ic.gasPct+"% natural gas, with 0% nuclear and 0% hydro</b> (EPA eGRID, "+ic.year+"). New York's nuclear and large hydro are all upstate; Indian Point — the only plant near the city — closed in 2021, so the "+fmt(nucNow,1)+"% nuclear shown above does not come from the city's own generation.";
     inCity.append(sb);
     const ichist = el("div"); ichist.style.cssText="margin-top:6px";
     ichist.innerHTML = "<b style='color:var(--orange)'>The Indian Point arc.</b> When it ran, the Indian Point nuclear plant just north of the city was widely cited as about a quarter of the electricity used in New York City and Westchester (a figure that is debated, since power can't be metered to a specific load). Its closure in 2021 removed the area's main carbon-free baseload — largely replaced, in the near term, by natural gas.";
     inCity.append(ichist);
     const ictail = el("div"); ictail.style.cssText="margin-top:6px"; ictail.innerHTML = "This is generation <i>located</i> in the city; New York City also imports a large share of its power, and imported electricity can't be cleanly traced to a specific fuel.";
     inCity.append(ictail);
-    mixCard.append(inCity);
+    mixCard.append(fold("What's generated inside the city itself", inCity));
   }
-  document.getElementById("root").append(mixCard);
+  SEC.mix.append(mixCard);
 
   // ================= WHAT NYC IS CONSUMING =================
-  document.getElementById("root").append(sectionTag("What New York City is consuming"));
+  SEC.today.append(sectionTag("Today's demand, hour by hour"));
 
   const loadCard = el("div","card");
   loadCard.append(h2("New York City load vs. NYISO forecast", "Megawatts drawn by Zone J since midnight (solid), against NYISO's own day-ahead zonal load forecast (dashed). Both are the same metric from the same operator, so they compare directly."));
@@ -524,7 +586,7 @@ function render(D, B, Pk, GC, HD, DL){
   lmini.append(
     mini("Now", fmt(L.nycLoadMW)+" MW"),
     mini("vs forecast", (vsF>0?"+":"")+fmt(vsF,1)+"% · "+fmt(L.nycForecastMW)+" MW"),
-    mini("Peak today", fmt(L.peakNyc.mw)+" MW · "+hhmm(L.peakNyc.t)),
+    mini("Peak today", fmt(L.peakNyc.mw)+" MW at "+apTime(L.peakNyc.t)),
     mini("Energy so far today", fmt(mwhToday/1000,1)+" GWh")
   );
   loadCard.append(lmini);
@@ -538,7 +600,7 @@ function render(D, B, Pk, GC, HD, DL){
   shareCard.append(smini);
 
   const g2 = el("div","grid cols-2b"); g2.append(loadCard, shareCard);
-  document.getElementById("root").append(g2);
+  SEC.today.append(g2);
 
   // today vs. a normal day (needs baseline.json)
   if(B && B.typicalDay?.slots?.length){
@@ -549,8 +611,8 @@ function render(D, B, Pk, GC, HD, DL){
     const kind = TD.dayType==="weekday" ? "weekdays" : "weekends and holidays";
     const MON = ["Jan.","Feb.","March","April","May","June","July","Aug.","Sept.","Oct.","Nov.","Dec."];
     const apDate = (iso, yr) => { const [y,m,d]=iso.split("-"); return MON[+m-1]+" "+(+d)+(yr?", "+y:""); };
-    const bandCard = el("div","card"); bandCard.style.marginTop="18px";
-    bandCard.append(h2("How today compares with a normal day",
+    const bandCard = el("div","card"); bandCard.style.borderTop="0";
+    bandCard.append(h2("Today against a normal day",
       "New York City load today (solid) against the "+TD.daysUsed+" "+kind+" of the past four weeks"+(TD.windowStart? " ("+apDate(TD.windowStart)+" to "+apDate(TD.windowEnd)+")" : "")+" — the shaded band spans the 10th to 90th percentile, the dashed line is the median. "+(priors.length? "Faint lines are the same weekday one, two and three years back, so a "+(priors[0].weekday||"weekday")+" is compared with a "+(priors[0].weekday||"weekday")+"." : "")));
     bandCard.append(bandChart(todaySlots, B.typicalDay.slots, priors));
     // legend
@@ -569,7 +631,7 @@ function render(D, B, Pk, GC, HD, DL){
     const typNow = TD.slots.find(s=>s.slot===nowSlot);
     const vsTyp = typNow?.median ? Math.round((L.nycLoadMW/typNow.median-1)*100) : null;
     bmini.append(mini("Now vs typical at "+nowSlot+(typNow? " (median "+fmt(typNow.median)+" MW)" : ""), vsTyp==null ? "—" : (vsTyp>0?"+":"")+vsTyp+"%"));
-    bmini.append(mini("Today's peak so far", fmt(L.peakNyc.mw)+" MW · "+hhmm(L.peakNyc.t)));
+    bmini.append(mini("Today's peak so far", fmt(L.peakNyc.mw)+" MW at "+apTime(L.peakNyc.t)));
     priors.forEach(p=>{
       const at = p.curve.find(c=>c.slot===nowSlot);
       bmini.append(mini(apDate(p.date,true)+(p.holiday?" (holiday)":"")+(at? " at "+nowSlot : "")+" · day's peak "+fmt(p.peakMW)+" MW", at? fmt(at.nyc)+" MW" : fmt(p.peakMW)+" MW peak"));
@@ -578,11 +640,115 @@ function render(D, B, Pk, GC, HD, DL){
     const cav=el("div"); cav.style.cssText="color:var(--faint);font-size:12.5px;margin-top:12px";
     cav.innerHTML="Year-to-year and day-to-day differences are driven mostly by <b>weather</b> — hot days push air-conditioning load up sharply — not by an underlying trend. The band reflects the past four weeks' actual "+kind+", so it widens when those weeks included both mild and extreme days.";
     bandCard.append(cav);
-    document.getElementById("root").append(bandCard);
+    SEC.lead.append(bandCard);
+  }
+
+  // ================= LOOK AHEAD =================
+  {
+    const tomorrow = addDaysIso(D.sourceDate, 1);
+    const fcTom = (D.forecast||[]).filter(f=>f.t.startsWith(tomorrow));
+    const daTom = (D.dayAheadTomorrow||[]).filter(d=>d.t.startsWith(tomorrow));
+    if(fcTom.length >= 20){
+      SEC.ahead.append(sectionTag("Tomorrow on the grid"));
+      const card = el("div","card"); card.style.borderTop="0";
+      const hrs = fcTom.map(f=>{ const h=+f.t.slice(11,13); const da=daTom.find(d=>+d.t.slice(11,13)===h); return {h, mw:f.nyc, price: da? da.nyc : null}; });
+      const havePrice = hrs.filter(h=>h.price!=null).length >= 20;
+      const key = havePrice ? "price" : "mw";
+      const sorted = hrs.slice().sort((a,b)=>a[key]-b[key]);
+      const lo = new Set(sorted.slice(0,4).map(h=>h.h)), hi = new Set(sorted.slice(-4).map(h=>h.h));
+      const pk = hrs.reduce((m,h)=>h.mw>m.mw?h:m, hrs[0]), tr = hrs.reduce((m,h)=>h.mw<m.mw?h:m, hrs[0]);
+      const p = el("p","desc"); p.style.cssText="font-size:17px;color:var(--fg);max-width:820px";
+      let txt = apDay(tomorrow)+": NYISO expects the city's demand to peak near <b>"+fmt(pk.mw)+" MW around "+apHour(pk.h)+"</b> and bottom out near "+fmt(tr.mw)+" MW around "+apHour(tr.h)+". ";
+      if(havePrice){
+        const pr = hrs.map(h=>h.price);
+        txt += "The day-ahead market has already priced tomorrow's power, from $"+fmt(Math.min(...pr),0)+" to $"+fmt(Math.max(...pr),0)+" a megawatt-hour. The cheapest hours are <b style='color:var(--mint)'>"+hourRuns([...lo])+"</b>; the costliest are <b style='color:var(--vermilion)'>"+hourRuns([...hi])+"</b>.";
+      } else {
+        txt += "The day-ahead market posts tomorrow's prices around late morning; until then the bars show forecast demand, with the four quietest hours, <b style='color:var(--mint)'>"+hourRuns([...lo])+"</b>, and the four busiest, <b style='color:var(--vermilion)'>"+hourRuns([...hi])+"</b>.";
+      }
+      p.innerHTML = tidy(txt); card.append(p);
+      card.append(h4mini(havePrice ? "Day-ahead price by hour, New York City ($/MWh)" : "Forecast demand by hour, New York City (MW)"));
+      const bars = el("div","hours"); const vals = hrs.map(h=>h[key]); const vmax = Math.max(...vals);
+      for(const h of hrs){ const b=el("div"); b.style.height=(h[key]/vmax*100)+"%"; if(lo.has(h.h)) b.className="lo"; if(hi.has(h.h)) b.className="hi";
+        b.addEventListener("mousemove",e=>showTip('<div class="t-time">'+apHour(h.h)+' to '+apHour(h.h+1)+'</div><div class="t-row"><span>Forecast demand</span><b>'+fmt(h.mw)+' MW</b></div>'+(h.price!=null?'<div class="t-row"><span>Day-ahead price</span><b>$'+fmt(h.price,2)+'</b></div>':''), e.clientX, e.clientY));
+        b.addEventListener("mouseleave",hideTip); bars.append(b); }
+      card.append(bars);
+      const hl = el("div","hourlabels"); for(const h of hrs) { const sp=el("span"); sp.textContent = h.h%6===0 ? (h.h===0?"12a":h.h===12?"noon":(h.h%12)+(h.h<12?"a":"p")) : ""; hl.append(sp); } card.append(hl);
+      const why = el("p","desc"); why.style.marginTop="12px";
+      why.textContent = "Running a dishwasher, laundry or a car charger in the low hours draws power when the grid is under the least strain. Most Con Edison customers pay the same rate at every hour, so the saving goes to the grid, not usually to the bill; customers on Con Edison's time-of-use plan do pay less off-peak.";
+      card.append(why);
+      // the next several days: NYISO's forecast peak for each
+      const days = [...new Set((D.forecast||[]).map(f=>f.t.slice(0,10)))].filter(d=>d>D.sourceDate);
+      if(days.length){
+        card.append(h4mini("NYISO's forecast peak for the days ahead"));
+        const ul = el("ul","days");
+        for(const d of days){
+          const fs=(D.forecast||[]).filter(f=>f.t.startsWith(d)); if(fs.length<20) continue;
+          const m=fs.reduce((a,f)=>f.nyc>a.nyc?f:a, fs[0]);
+          const li=el("li"); if(m.nyc>=9500) li.className="hot";
+          li.innerHTML="<b>"+fmt(m.nyc)+" MW</b>"+apDay(d)+", around "+apTime(m.t);
+          ul.append(li);
+        }
+        card.append(ul);
+      }
+      SEC.ahead.append(card);
+    }
+  }
+
+  // ================= A YEAR ON THE GRID (daily-grid.json) =================
+  if(DG && DG.days?.length){
+    const days = DG.days, mo = DG.monthly||[];
+    const MONF=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const mname = m => MONF[+m.slice(5,7)-1];
+    SEC.history.append(sectionTag("A year on the grid"));
+    const card = el("div","card"); card.style.borderTop="0";
+    const avg = (k) => { const v=days.map(d=>d[k]).filter(x=>x!=null); return v.reduce((a,b)=>a+b,0)/v.length; };
+    const full = mo.filter(m=>m.n>=28);
+    const dearest = full.reduce((a,m)=>m.rt>a.rt?m:a, full[0]), cheapest = full.reduce((a,m)=>m.rt<a.rt?m:a, full[0]);
+    const p = el("p","desc"); p.style.cssText="font-size:17px;color:var(--fg);max-width:820px";
+    p.innerHTML = "Over the past year, from "+apDay(DG.start).split(", ").slice(1).join(", ")+", "+DG.start.slice(0,4)+" to "+apDay(DG.end).split(", ").slice(1).join(", ")+", "+DG.end.slice(0,4)+", wholesale power in New York City averaged <b>$"+fmt(avg("rt"),2)+" a megawatt-hour</b>. "+
+      (dearest && cheapest ? ([12,1,2].includes(+dearest.m.slice(5,7))
+          ? "The dearest month was "+mname(dearest.m)+", at $"+fmt(dearest.rt,0)+", and the cheapest "+mname(cheapest.m)+", at $"+fmt(cheapest.rt,0)+": winter, not summer, is when city power gets expensive, largely because natural gas, which fuels most of the city's plants, gets scarce and costly when it is also needed for heat. "
+          : "The dearest month was "+mname(dearest.m)+", at $"+fmt(dearest.rt,0)+", and the cheapest "+mname(cheapest.m)+", at $"+fmt(cheapest.rt,0)+". ") : "")+
+      "Statewide, "+fmt(avg("cleanPct"),0)+"% of generation was carbon-free.";
+    card.append(p);
+    const METRICS = [
+      {key:"rt", label:"Price", unit:"$/MWh", dec:2, color:"--red", what:"New York City real-time wholesale price, daily average"},
+      {key:"cleanPct", label:"Carbon-free share", unit:"%", dec:1, color:"--green", what:"Share of statewide generation from nuclear, hydro, wind and other renewables"},
+      {key:"co2", label:"Carbon intensity", unit:"lbs CO₂/MWh", dec:0, color:"--orange", what:"Estimated CO₂ per megawatt-hour of statewide generation"},
+      {key:"netImpMW", label:"Net imports", unit:"MW", dec:0, color:"--blue", what:"Statewide load minus in-state generation, daily average (approximate)"},
+      {key:"chpeMW", label:"Quebec line", unit:"MW", dec:0, color:"--cyan", what:"Scheduled flow on the Champlain Hudson Power Express, daily average"},
+    ];
+    const tg = el("div","toggle"); tg.style.margin="6px 0 10px";
+    const holder = el("div"); const cap = el("p","desc"); cap.style.margin="4px 0 0";
+    let zero = true;
+    let cur = METRICS[0];
+    const zb = el("button"); zb.textContent="Start axis at zero"; zb.className="active";
+    const draw = () => { holder.innerHTML=""; holder.append(seriesChart(days, {...cur, color:cssVar(cur.color), zero: cur.key==="netImpMW" ? false : zero})); cap.textContent = cur.what+". "+(cur.key==="netImpMW" ? "Below zero means the state exported more than it imported that day." : ""); };
+    METRICS.forEach((m,i)=>{ const b=el("button"); b.textContent=m.label; if(!i) b.className="active";
+      b.onclick=()=>{ [...tg.children].forEach(c=>c.className=""); b.className="active"; cur=m; draw(); }; tg.append(b); });
+    zb.onclick=()=>{ zero=!zero; zb.className = zero?"active":""; draw(); };
+    const ctl = el("div"); ctl.style.cssText="display:flex;flex-wrap:wrap;gap:10px;align-items:center"; const zt=el("div","toggle"); zt.append(zb); ctl.append(tg, zt);
+    card.append(ctl, holder, cap); draw();
+
+    // the Quebec line, month by month since deliveries began
+    const ch = mo.filter(m=>m.m>="2026-06" && m.chpeMW!=null);
+    if(ch.length){
+      card.append(h4mini("The Quebec line, average scheduled flow by month"));
+      const ul = el("ul","days");
+      for(const m of ch){ const li=el("li"); li.innerHTML="<b>"+fmt(m.chpeMW)+" MW</b>"+mname(m.m)+(m.n<28? " (through the "+m.n+"th)" : "")+", flowing on "+days.filter(d=>d.d.startsWith(m.m) && d.chpeMW>0).length+" of "+m.n+" days"; ul.append(li); }
+      card.append(ul);
+      const first2 = ch.slice(0,2), later = ch.slice(2);
+      const n = el("p","desc"); n.style.marginTop="12px";
+      n.textContent = "NYISO's published schedules show the line carrying little in its first two months, "+first2.map(m=>fmt(m.chpeMW)+" MW in "+mname(m.m)).join(" and ")+", with zero scheduled flow on most days"+(later.length? "; since "+mname(later[0].m)+" it has averaged between "+fmt(Math.min(...later.map(m=>m.chpeMW)))+" and "+fmt(Math.max(...later.map(m=>m.chpeMW)))+" MW a month" : "")+". The schedules also show test flows in April and May 2026, before contracted deliveries began.";
+      card.append(n);
+    }
+    card.append(fold("How this year of data is built",
+      "Each day is computed from NYISO's monthly archives and daily files: the city's real-time price (time-weighted over the day's 5-minute intervals), the day-ahead price, statewide generation by fuel, statewide load, and the scheduled flow on the Quebec line. Net imports are statewide load minus in-state generation, matched reading by reading (approximate: they also absorb line losses and pumped-storage charging). Carbon intensity uses the same emission factors as the live estimate above. NYISO's public archive drops days, so every day once captured is kept"+(DG.loadFromIntegrated?.length? "; for "+DG.loadFromIntegrated.length+" days in November 2026, when NYISO no longer served the 5-minute load files, load comes from its hourly integrated-load archive, which agrees with the 5-minute series within about 0.05% on average" : "")+". Built by <code>build-daily-grid.py</code>; no value is hand-entered. "+DG.nDays+" days, "+DG.start+" to "+DG.end+"."));
+    SEC.history.append(card);
   }
 
   // ================= WHAT IT COSTS =================
-  document.getElementById("root").append(sectionTag("What it costs"));
+  SEC.cost.append(sectionTag("What it costs"));
 
   const priceCard = el("div","card");
   priceCard.append(h2("Real-time vs. day-ahead price in New York City", "Real-time locational-based marginal price (LBMP) for Zone J (solid) against the price the day-ahead market set the evening before (dashed). Both are LBMP in dollars per megawatt-hour — energy only, before delivery and taxes."));
@@ -600,7 +766,7 @@ function render(D, B, Pk, GC, HD, DL){
     mini("Real-time now", "$"+fmt(L.nycPriceLbmp,2)),
     mini("Day-ahead this hour", L.nycDayAheadLbmp!=null ? "$"+fmt(L.nycDayAheadLbmp,2)+" · "+(vsDa>0?"+":"")+fmt(vsDa,0)+"%" : "—"),
     mini("Average today", "$"+fmt(avg,2)),
-    mini("Most expensive", "$"+fmt(hi.v,2)+" · "+hhmm(hi.t))
+    mini("Most expensive", "$"+fmt(hi.v,2)+" at "+apTime(hi.t))
   );
   priceCard.append(pmini);
 
@@ -641,7 +807,7 @@ function render(D, B, Pk, GC, HD, DL){
   zoneCard.append(zn);
 
   const g3 = el("div","grid cols-2"); g3.append(priceCard, zoneCard);
-  document.getElementById("root").append(g3);
+  SEC.cost.append(g3);
 
   // context card: plain-language translations
   const NYC_POP = 8804190; // 2020 U.S. Census decennial count for New York City
@@ -671,10 +837,10 @@ function render(D, B, Pk, GC, HD, DL){
   cn2.innerHTML =
     "<b>Why your bill is higher:</b> the price here is the wholesale energy commodity only. A household bill also includes delivery, capacity, system-benefit charges and taxes, which together typically more than triple the per-kilowatt-hour cost. New York City residential all-in rates have recently been in the rough range of 25–35¢/kWh — that figure is external context, not from the NYISO feed.";
   ctx.append(cn2);
-  document.getElementById("root").append(ctx);
+  SEC.cost.append(ctx);
 
   // ================= CARBON INTENSITY =================
-  document.getElementById("root").append(sectionTag("Carbon intensity"));
+  SEC.carbon.append(sectionTag("How much carbon each megawatt-hour carries"));
   const co2Card = el("div","card");
   co2Card.append(h2("Estimated carbon intensity of generation", "Pounds of carbon dioxide per megawatt-hour, estimated from the statewide fuel mix and standard emission factors. Lower means cleaner power."));
   co2Card.append(lineChart(D.fuelMix.map(f=>({t:f.t, v:f.co2RateLbsPerMWh})), {color:cssVar("--orange"), unit:"lbs/MWh", fill:true}));
@@ -687,11 +853,11 @@ function render(D, B, Pk, GC, HD, DL){
     mini("Carbon-free share now", fmt(L.cleanPct,1)+"%")
   );
   co2Card.append(cmini);
-  document.getElementById("root").append(co2Card);
+  SEC.carbon.append(co2Card);
 
   // ================= GRID CARBON INTENSITY BY CITY =================
   if(GC && GC.cities?.length){
-    document.getElementById("root").append(sectionTag("How clean is the grid — city by city"));
+    SEC.cities.append(sectionTag("New York's grid against other cities"));
     const gcCard = el("div","card");
     gcCard.append(h2("Grid carbon intensity by city", GC.what+" Each city is shown by the grid it sits on — U.S. cities by their Environmental Protection Agency (EPA) eGRID subregion (the most local official figure), international cities by their national grid."));
     const cities = GC.cities.slice().sort((a,b)=>a.g-b.g);
@@ -716,12 +882,12 @@ function render(D, B, Pk, GC, HD, DL){
     const gsrc = el("div"); gsrc.style.cssText="color:var(--faint);font-size:12px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px";
     gsrc.innerHTML = "Unit: grams CO₂ per kWh, annual average. U.S.: "+GC.usSource+" International: "+GC.intlSource+"<br>"+GC.caveat;
     gcCard.append(gsrc);
-    document.getElementById("root").append(gcCard);
+    SEC.cities.append(gcCard);
   }
 
   // ================= PEAKER PLANTS =================
   if(Pk && Pk.plants?.length){
-    document.getElementById("root").append(sectionTag("Peaking power plants"));
+    SEC.peakers.append(sectionTag("The peaker plants"));
     const pk = el("div","card");
     pk.append(h2("Where New York City's peaker plants are",
       Pk.totalPlants+" grid-serving peaking plants operate inside the five boroughs, totaling "+fmt(Pk.totalNetSummerMW)+" MW of net summer capacity. These are simple-cycle combustion turbines and engines that switch on mainly during high demand, such as summer heat waves. Sized by capacity; red burns oil or kerosene, orange burns natural gas."));
@@ -738,6 +904,7 @@ function render(D, B, Pk, GC, HD, DL){
       tbl.append(tr);
     }
     const tblWrap = el("div","plist-wrap"); tblWrap.append(tbl); pk.append(tblWrap);
+    if(PR && PR.plants?.length) pk.append(runsBlock(PR, Pk));
 
     // real-time category-level "fossil swing supply" — honest proxy for peaking activity
     const cats = L.fuelCats || {};
@@ -760,7 +927,7 @@ function render(D, B, Pk, GC, HD, DL){
     const src = el("div"); src.style.cssText="color:var(--faint);font-size:12px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px";
     src.innerHTML = "Source: "+Pk.source+". Definition: "+Pk.definition;
     pk.append(src);
-    document.getElementById("root").append(pk);
+    SEC.peakers.append(pk);
 
     // init Leaflet map (LL = Leaflet global; the local `L` here is D.latest). Graceful if the library failed to load.
     const LL = window.L;
@@ -773,7 +940,7 @@ function render(D, B, Pk, GC, HD, DL){
           if(p.lat==null||p.lon==null) return;
           const oil = p.fuels.some(f=>/oil|kerosene|jet/.test(f));
           const r = Math.max(5, Math.sqrt(p.netSummerMW)*0.95);
-          LL.circleMarker([p.lat,p.lon], { radius:r, color:"#05080f", weight:1, fillColor: oil?"#f97362":"#fb923c", fillOpacity:0.78 })
+          LL.circleMarker([p.lat,p.lon], { radius:r, color:"var(--bg)", weight:1, fillColor: oil?"#f97362":"#fb923c", fillOpacity:0.78 })
             .addTo(map)
             .bindPopup("<b>"+p.plant+"</b><br>"+p.borough+" · online "+(p.minYear||"?")+"<br>"+fmt(p.netSummerMW)+" MW net · "+p.fuels.join(", ")+"<br>"+p.primeMovers.join("/")+" (simple-cycle)");
         });
@@ -786,9 +953,9 @@ function render(D, B, Pk, GC, HD, DL){
   if(DL && DL.days?.length){
     const MONF=["January","February","March","April","May","June","July","August","September","October","November","December"];
     const MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const fday=iso=>{ const [y,m,d]=iso.split("-"); return MON3[+m-1]+" "+(+d)+", "+y; };
+    const fday=iso=>{ const [y,m,d]=iso.split("-"); return MON_AP[+m-1]+" "+(+d)+", "+y; };
     const s=DL.stats;
-    document.getElementById("root").append(sectionTag("A year of demand"));
+    SEC.year.append(sectionTag("A year of demand, day by day"));
     const yc = el("div","card");
     yc.append(h2("A year of New York City power, day by day",
       "Every day from "+fday(DL.start)+" to "+fday(DL.end)+" — the city's electricity use as one point per day. The big summer hump is air conditioning; a smaller winter rise comes with long nights and some electric heat; the troughs are spring and fall, when little is cooling or heating. NYISO Zone J."));
@@ -825,15 +992,15 @@ function render(D, B, Pk, GC, HD, DL){
     src.innerHTML =
       "<b>Method.</b> "+DL.source+". For each day: <b>peak</b> is the maximum of that day's 5-minute readings; <b>energy used</b> is the day's average load × 24 hours (an average-times-hours integral, robust to the few extra readings archived days carry). "+DL.nDays+" days shown"+(DL.missing?.length ? " ("+DL.missing.length+" days in the window are missing because NYISO no longer serves them)" : "")+". Every day once captured is kept, since NYISO's public archive drops days. This is a real-time metered-load series — behind-the-meter rooftop solar is netted out of it, so true consumption on sunny days runs a little higher. Built by <code>build-daily-load.py</code> (re-runnable); no value is hand-entered. Snapshot "+DL.generatedAt+".";
     yc.append(src);
-    document.getElementById("root").append(yc);
+    SEC.year.append(yc);
   }
 
   // ================= HEAT VS DEMAND =================
   if(HD && HD.points?.length){
     const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const fdate=iso=>{ const [y,m,d]=iso.split("-"); return MON[+m-1]+" "+(+d)+", "+y; };
+    const fdate=iso=>{ const [y,m,d]=iso.split("-"); return MON_AP[+m-1]+" "+(+d)+", "+y; };
     const s=HD.stats;
-    document.getElementById("root").append(sectionTag("How heat drives demand"));
+    SEC.heat.append(sectionTag("Heat and demand"));
     const hd = el("div","card");
     hd.append(h2("How heat drives demand",
       "New York City's summer power demand rises with air-conditioning use. Each dot is one summer day, "+HD.range+" — its high temperature against the city's peak load (NYISO Zone J). Hotter day, higher peak."));
@@ -889,7 +1056,7 @@ function render(D, B, Pk, GC, HD, DL){
     src.innerHTML =
       "<b>Method.</b> Demand: "+HD.loadSource+" — each day's peak is the maximum of its 5-minute readings. Temperature: "+HD.tempSource+" — daily maximum air and apparent (\"feels-like\") temperature. "+HD.nDays+" days matched by date over "+HD.range+". Correlation is Pearson's r; the per-degree figure is a least-squares slope. Built by <code>build-heat-demand.py</code> (re-runnable); no value here is hand-entered. Snapshot "+HD.generatedAt+".";
     hd.append(src);
-    document.getElementById("root").append(hd);
+    SEC.heat.append(hd);
   }
 
   buildMethod(D);
@@ -900,6 +1067,102 @@ function el(tag, cls){ const e=document.createElement(tag); if(cls) e.className=
 function spanT(cls, txt){ const s=el("span",cls); s.textContent=txt; return s; }
 function h2(title, desc){ const w=el("div"); const a=el("h2"); a.textContent=title; const b=el("p","desc"); b.textContent=desc; w.append(a,b); return w; }
 function h4mini(t){ const e=el("div"); e.style.cssText="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:600"; e.textContent=t; return e; }
+// How often each peaker ran, from EPA emissions reporting (data/peaker-runs.json,
+// built by build-peaker-runs.py), plus each plant's status under the state peaker rule.
+function shortPlant(n){
+  return n.replace(" Gas Turbines Generating","").replace(" Power Project","").replace(" Peaking Facility LLC","")
+          .replace(" Peaking","").replace("Astoria Generating Station","Astoria gas turbine");
+}
+function runsBlock(PR, Pk){
+  const w = el("div"); w.style.marginTop = "28px";
+  const Y = "2025";
+  const [ytdY, ytdQ] = (PR.ytdThrough||"").split("-Q");
+  const ytdEnd = ["March","June","September","December"][(+ytdQ||1)-1];
+  const fuelOf = name => (Pk.plants.find(q=>q.plant===name)||{}).fuels || [];
+  const rows = PR.plants.filter(p=>p.covered).map(p=>{
+    const a = p.years[Y]||{}, b = p.years[ytdY]||{};
+    return { p, name: shortPlant(p.plant), cc: /combined-cycle/i.test((p.notes||[]).join(" ")),
+      oil: fuelOf(p.plant).length>0 && fuelOf(p.plant).every(f=>/oil|kerosene|jet/.test(f)),
+      hrs: a.operatingHoursMaxUnit||0, days: a.daysAnyUnitOperated, mwh: a.grossLoadMWh||0, nox: a.noxTons,
+      hrsYtd: b.operatingHoursMaxUnit||0 };
+  }).sort((a,b)=>b.hrs-a.hrs);
+  const peak = rows.filter(r=>!r.cc);
+  const busiest = peak[0];
+  const mostDays = [...peak].sort((a,b)=>(b.days||0)-(a.days||0))[0];
+  const idle = peak.filter(r=>r.hrs < 25);
+  const T = PR.totalsExcludingCombinedCycle || {};
+  const gn = peak.filter(r=>/^(Gowanus|Narrows)/.test(r.name)).reduce((s,r)=>s+(r.nox||0),0);
+  const noxY = T[Y]?.noxTons, nox23 = T["2023"]?.noxTons, noxYtd = T[ytdY]?.noxTons;
+  const list = a => a.length<2 ? a.join("") : a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+
+  w.append(h4mini("How often each plant ran"));
+  const lead = el("p"); lead.style.cssText = "margin:4px 0 10px;max-width:860px";
+  lead.innerHTML =
+    "Leaving out East River, a combined-cycle plant that runs almost every day, the busiest peaker in "+Y+" was <b>"+busiest.name+"</b>: its busiest turbine ran "+
+    fmt(busiest.hrs)+" hours, "+Math.round(busiest.hrs/87.6)+"% of the hours in the year. "+
+    (mostDays && mostDays.days ? mostDays.name+" ran on the most days, "+fmt(mostDays.days)+". " : "")+
+    (idle.length ? list(idle.map(r=>r.name))+" ran less than 25 hours. " : "")+
+    (noxY!=null ? "Together the peakers emitted <b>"+fmt(noxY)+" tons of nitrogen oxides</b> in "+Y+(nox23!=null?", compared with "+fmt(nox23)+" in 2023":"")+
+      "; Gowanus and Narrows accounted for "+fmt(gn)+" tons ("+Math.round(gn/noxY*100)+"%). " : "")+
+    (noxYtd!=null ? "Through "+ytdEnd+" "+ytdY+" the total is "+fmt(noxYtd)+" tons." : "");
+  w.append(lead);
+
+  const box = el("div","runs");
+  const sc = el("div","runscale");
+  sc.innerHTML = "<div></div><div><span><span>0 hours</span><span>a full year, 8,760</span></span></div><div>"+Y+"</div>";
+  box.append(sc);
+  for(const r of rows){
+    const row = el("div","runrow");
+    const color = r.cc ? "var(--lilac)" : r.oil ? "var(--vermilion)" : "var(--rose)";
+    row.innerHTML =
+      "<div class='nm'><b>"+r.name+"</b>"+(r.cc?" <span class='sub'>(combined cycle)</span>":"")+"</div>"+
+      "<div class='bar'><i style='width:"+Math.max(r.hrs>0?0.4:0, r.hrs/87.6).toFixed(2)+"%;background:"+color+"'></i></div>"+
+      "<div>"+fmt(r.hrs)+" hours"+(r.days!=null?", "+fmt(r.days)+" days":"")+(r.nox!=null?", "+fmt(r.nox, r.nox<10?1:0)+" tons NOx":"")+
+      "<div class='sub'>"+ytdY+" through "+ytdEnd+": "+fmt(r.hrsYtd)+" hours</div></div>";
+    box.append(row);
+  }
+  w.append(box);
+  const cap = el("p","note");
+  cap.textContent = "Hours are those of each plant's busiest unit, so plants with many small turbines are not inflated by adding them up. Days are days on which any unit ran. NOx is nitrogen oxides, a smog-forming pollutant. Vermilion bars are plants that burn only oil or kerosene; the rest burn natural gas. Source: U.S. Environmental Protection Agency, Clean Air Markets Program Data, quarterly and daily emissions reporting.";
+  w.append(cap);
+
+  // status under the state peaker rule, plant by plant, each with its source
+  const ruled = PR.plants.filter(p=>p.peakerRule && p.peakerRule.summary);
+  const allGens = PR.plants.flatMap(p=>(p.retirement&&p.retirement.generators)||[]);
+  const os = allGens.filter(g=>/^\(OS\)/.test(g.status||"")).length;
+  const planned = allGens.filter(g=>g.plannedRetirement).length;
+  const ul = el("ul","rulelist");
+  for(const p of ruled){
+    const seen = new Set(); const links = [];
+    for(const src of p.peakerRule.sources||[]){ if(seen.has(src.url)) continue; seen.add(src.url);
+      links.push("<a href='"+src.url+"' target='_blank' rel='noopener'>"+src.source.split(",")[0]+(/2025-Q3/.test(src.url)?", 2025 Q3":/2026-Q1/.test(src.url)?", 2026 Q1":"")+"</a>"); }
+    const li = el("li"); li.innerHTML = "<b>"+shortPlant(p.plant)+"</b>: "+p.peakerRule.summary+" ("+links.join("; ")+")";
+    ul.append(li);
+  }
+  const intro = el("p"); intro.style.margin = "0 0 8px";
+  intro.textContent = "The state Department of Environmental Conservation's peaker rule (6 NYCRR Subpart 227-3) tightened nitrogen oxide limits for these turbines in stages from 2023 to 2025, and owners retired or idled units that could not meet them unless the grid operator, NYISO, found them needed for reliability. "+
+    (ruled.length ? ruled.length+" of the "+PR.plants.length+" plants appear in NYISO's peaker rule records; no primary source tied the others to it. " : "")+
+    "In EIA's "+((PR.sources.eia860mStatus||{}).file||"latest").replace("_generator"," ").replace(".xlsx","").replace(/^./,c=>c.toUpperCase())+" generator file, "+
+    (planned ? planned+" units carry a planned retirement date" : "none of these plants' units carries a planned retirement date")+" and "+os+" are marked out of service.";
+  const rb = el("div"); rb.append(intro, ul);
+  w.append(fold("Status under the state's peaker rule", rb));
+
+  const notes = PR.plants.filter(p=>p.notes && p.notes.length || !/lists one of the plant's EIA generator IDs/.test(p.match||""));
+  w.append(fold("How the run hours are counted",
+    "<p>Each plant's turbines report hourly operation and emissions to the EPA's Clean Air Markets Program. The page sums EPA's quarterly records by plant and year and counts days of operation from its daily records for "+Y+". "+
+    "Plants were matched by EIA plant ID, which EPA uses as the facility code, and by generator ID. Output is gross megawatt-hours, before the plant's own use. "+
+    "Data through "+ytdEnd+" "+ytdY+", the latest quarter EPA has published. Built "+(PR.generatedAt||"").slice(0,10)+" by <code>build-peaker-runs.py</code>.</p>"+
+    "<p>Plant by plant:</p><ul class='rulelist'>"+notes.map(p=>"<li><b>"+shortPlant(p.plant)+"</b>: "+
+      [/lists one of the plant's EIA generator IDs/.test(p.match||"")?"":p.match, ...(p.notes||[])].filter(Boolean).join(" ")+"</li>").join("")+"</ul>"));
+  return w;
+}
+
+// a closed "more" note: the explanation is one click away instead of in the way
+function fold(summary, html){
+  const d=el("details","more"); const sm=el("summary"); sm.textContent=summary;
+  const b=el("div","body"); if(html instanceof Node) b.append(html); else b.innerHTML=html;
+  d.append(sm,b); return d;
+}
 function sectionTag(t){ const e=el("div","section-tag"); e.textContent=t; return e; }
 function mini(k,v){ const w=el("div","mini"); const a=el("div","k"); a.textContent=k; const b=el("div","v"); b.textContent=v; w.append(a,b); return w; }
 function statCard(label, big, unit, color, note){
@@ -907,7 +1170,7 @@ function statCard(label, big, unit, color, note){
   const l=el("div","label"); l.textContent=label;
   const b=el("div","big"); b.textContent=big; b.style.color=color;
   const u=el("span","unit"); u.textContent=" "+unit; b.append(u);
-  const n=el("div","note"); n.textContent=note;
+  const n=el("span","note"); n.textContent=label+". "+note;
   c.append(l,b,n); return c;
 }
 
@@ -978,29 +1241,27 @@ function lineChart(series, opts){
   if(!data.length){ wrap.append(svg); return wrap; }
   const allV = data.map(d=>d.v).concat(cmp.map(d=>d.v));
   const vmax=Math.max(...allV), vmin=Math.min(...allV, 0);
-  const pad=(vmax-vmin)*0.08||1; const ymax=vmax+pad, ymin=Math.max(0,vmin- (vmin>0?0:0));
+  const NS=niceScale(Math.max(0,vmin), vmax); const ymax=NS.hi, ymin=NS.lo;
   const n=data.length;
   const x=i=> P.l + i/(n-1)*(W-P.l-P.r);
   const y=v=> H-P.b - (v-ymin)/(ymax-ymin)*(H-P.t-P.b);
 
   // gridlines + y labels
-  const ticks=4;
-  for(let i=0;i<=ticks;i++){
-    const val=ymin+(ymax-ymin)*i/ticks;
+  for(const val of NS.ticks){
     const yy=y(val);
     const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
     gl.setAttribute("x1",P.l); gl.setAttribute("x2",W-P.r); gl.setAttribute("y1",yy); gl.setAttribute("y2",yy); svg.append(gl);
     const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",P.l-8); tx.setAttribute("y",yy+3);
-    tx.setAttribute("text-anchor","end"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","10.5"); tx.setAttribute("font-family","var(--mono)");
-    tx.textContent=fmt(val,dec); svg.append(tx);
+    tx.setAttribute("text-anchor","end"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","12"); tx.setAttribute("font-family","var(--sans)");
+    tx.textContent=fmt(val,NS.dec); svg.append(tx);
   }
   // x labels (every ~4 hours)
   for(let i=0;i<n;i++){
     const mm=data[i].t.split("T")[1].slice(0,5);
     if(mm.endsWith(":00") && +mm.slice(0,2)%4===0){
       const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",x(i)); tx.setAttribute("y",H-8);
-      tx.setAttribute("text-anchor","middle"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","10.5"); tx.setAttribute("font-family","var(--mono)");
-      tx.textContent=mm; svg.append(tx);
+      tx.setAttribute("text-anchor","middle"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","12"); tx.setAttribute("font-family","var(--sans)");
+      tx.textContent=apHour(+mm.slice(0,2),0); svg.append(tx);
     }
   }
 
@@ -1014,7 +1275,7 @@ function lineChart(series, opts){
     lg.append(s1,s2); defs.append(lg); svg.append(defs);
     const area=document.createElementNS(ns,"polygon");
     area.setAttribute("points", P.l+","+(H-P.b)+" "+linePts+" "+(x(n-1))+","+(H-P.b));
-    area.setAttribute("fill","url(#"+grad+")"); svg.append(area);
+    area.setAttribute("fill",color); area.setAttribute("fill-opacity","0.16"); svg.append(area);
   }
   const pl=document.createElementNS(ns,"polyline");
   pl.setAttribute("points",linePts); pl.setAttribute("fill","none"); pl.setAttribute("stroke",color); pl.setAttribute("stroke-width","2"); pl.setAttribute("stroke-linejoin","round");
@@ -1037,7 +1298,7 @@ function lineChart(series, opts){
 
   // hover layer
   const hoverLine=document.createElementNS(ns,"line"); hoverLine.setAttribute("stroke","var(--muted)"); hoverLine.setAttribute("stroke-width","1"); hoverLine.setAttribute("opacity","0"); hoverLine.setAttribute("y1",P.t); hoverLine.setAttribute("y2",H-P.b); svg.append(hoverLine);
-  const hoverDot=document.createElementNS(ns,"circle"); hoverDot.setAttribute("r",4); hoverDot.setAttribute("fill",color); hoverDot.setAttribute("stroke","#05080f"); hoverDot.setAttribute("stroke-width","2"); hoverDot.setAttribute("opacity","0"); svg.append(hoverDot);
+  const hoverDot=document.createElementNS(ns,"circle"); hoverDot.setAttribute("r",4); hoverDot.setAttribute("fill",color); hoverDot.setAttribute("stroke","var(--bg)"); hoverDot.setAttribute("stroke-width","2"); hoverDot.setAttribute("opacity","0"); svg.append(hoverDot);
   const rect=document.createElementNS(ns,"rect"); rect.setAttribute("x",P.l); rect.setAttribute("y",P.t); rect.setAttribute("width",W-P.l-P.r); rect.setAttribute("height",H-P.t-P.b); rect.setAttribute("fill","transparent");
   rect.addEventListener("mousemove",e=>{
     const box=svg.getBoundingClientRect();
@@ -1046,7 +1307,7 @@ function lineChart(series, opts){
     const d=data[i];
     hoverLine.setAttribute("x1",x(i)); hoverLine.setAttribute("x2",x(i)); hoverLine.setAttribute("opacity","0.6");
     hoverDot.setAttribute("cx",x(i)); hoverDot.setAttribute("cy",y(d.v)); hoverDot.setAttribute("opacity","1");
-    showTip('<div class="t-time">'+hhmm(d.t)+' ET</div><div class="t-row"><span>'+ (unit) +'</span><b>'+fmt(d.v,dec)+'</b></div>', e.clientX, e.clientY);
+    showTip('<div class="t-time">'+apTime(d.t)+'</div><div class="t-row"><span>'+ (unit) +'</span><b>'+fmt(d.v,dec)+'</b></div>', e.clientX, e.clientY);
   });
   rect.addEventListener("mouseleave",()=>{hideTip(); hoverLine.setAttribute("opacity","0"); hoverDot.setAttribute("opacity","0");});
   svg.append(rect);
@@ -1073,32 +1334,32 @@ function dailyChart(days, opts={}){
   if(!data.length){ wrap.append(svg); return wrap; }
   const vals=data.map(d=>d[metric]);
   const vmax=Math.max(...vals), vlo=Math.min(...vals);
-  const ymin = zero ? 0 : Math.max(0, vlo - (vmax-vlo)*0.12);
-  const ymax = vmax + (vmax-ymin)*0.08;
+  const NS = niceScale(zero ? 0 : Math.max(0, vlo - (vmax-vlo)*0.05), vmax);
+  const ymin = NS.lo, ymax = NS.hi;
   const n=data.length;
   const x=i=> P.l + i/(n-1)*(W-P.l-P.r);
   const y=v=> H-P.b - (v-ymin)/(ymax-ymin)*(H-P.t-P.b);
 
   // gridlines + y labels
-  const ticks=4;
-  for(let i=0;i<=ticks;i++){
-    const val=ymin+(ymax-ymin)*i/ticks; const yy=y(val);
+  for(const val of NS.ticks){ const yy=y(val);
     const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
     gl.setAttribute("x1",P.l); gl.setAttribute("x2",W-P.r); gl.setAttribute("y1",yy); gl.setAttribute("y2",yy); svg.append(gl);
     const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",P.l-8); tx.setAttribute("y",yy+3);
-    tx.setAttribute("text-anchor","end"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","10.5"); tx.setAttribute("font-family","var(--mono)");
-    tx.textContent=fmt(val,val<100?1:0); svg.append(tx);
+    tx.setAttribute("text-anchor","end"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","12"); tx.setAttribute("font-family","var(--sans)");
+    tx.textContent=fmt(val,NS.dec); svg.append(tx);
   }
   // x labels at the first day of each month
   let lastMonth="";
+  const secondStart = data.findIndex(r=>r.d.slice(5,7)!==data[0].d.slice(5,7));
   for(let i=0;i<n;i++){
     const [yy,mm]=data[i].d.split("-");
     if(mm!==lastMonth){
       lastMonth=mm;
+      if(i===0 && secondStart>0 && secondStart<12) continue;
       const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline"); gl.setAttribute("opacity","0.5");
       gl.setAttribute("x1",x(i)); gl.setAttribute("x2",x(i)); gl.setAttribute("y1",P.t); gl.setAttribute("y2",H-P.b); svg.append(gl);
       const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",x(i)); tx.setAttribute("y",H-9);
-      tx.setAttribute("text-anchor","middle"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","10"); tx.setAttribute("font-family","var(--mono)");
+      tx.setAttribute("text-anchor","middle"); tx.setAttribute("fill","var(--faint)"); tx.setAttribute("font-size","12"); tx.setAttribute("font-family","var(--sans)");
       tx.textContent = MON3[+mm-1] + (mm==="01"? " '"+yy.slice(2) : "");
       svg.append(tx);
     }
@@ -1114,13 +1375,13 @@ function dailyChart(days, opts={}){
   lg.append(s1,s2); defs.append(lg); svg.append(defs);
   const area=document.createElementNS(ns,"polygon");
   area.setAttribute("points", P.l+","+(H-P.b)+" "+linePts+" "+(x(n-1))+","+(H-P.b));
-  area.setAttribute("fill","url(#"+grad+")"); svg.append(area);
+  area.setAttribute("fill",color); area.setAttribute("fill-opacity","0.16"); svg.append(area);
   const pl=document.createElementNS(ns,"polyline");
   pl.setAttribute("points",linePts); pl.setAttribute("fill","none"); pl.setAttribute("stroke",color); pl.setAttribute("stroke-width","1.4"); pl.setAttribute("stroke-linejoin","round"); svg.append(pl);
 
   // hover
   const hoverLine=document.createElementNS(ns,"line"); hoverLine.setAttribute("stroke","var(--muted)"); hoverLine.setAttribute("stroke-width","1"); hoverLine.setAttribute("opacity","0"); hoverLine.setAttribute("y1",P.t); hoverLine.setAttribute("y2",H-P.b); svg.append(hoverLine);
-  const hoverDot=document.createElementNS(ns,"circle"); hoverDot.setAttribute("r",4); hoverDot.setAttribute("fill",color); hoverDot.setAttribute("stroke","#05080f"); hoverDot.setAttribute("stroke-width","2"); hoverDot.setAttribute("opacity","0"); svg.append(hoverDot);
+  const hoverDot=document.createElementNS(ns,"circle"); hoverDot.setAttribute("r",4); hoverDot.setAttribute("fill",color); hoverDot.setAttribute("stroke","var(--bg)"); hoverDot.setAttribute("stroke-width","2"); hoverDot.setAttribute("opacity","0"); svg.append(hoverDot);
   const rect=document.createElementNS(ns,"rect"); rect.setAttribute("x",P.l); rect.setAttribute("y",P.t); rect.setAttribute("width",W-P.l-P.r); rect.setAttribute("height",H-P.t-P.b); rect.setAttribute("fill","transparent");
   rect.addEventListener("mousemove",e=>{
     const box=svg.getBoundingClientRect();
@@ -1130,7 +1391,7 @@ function dailyChart(days, opts={}){
     const dt=new Date(+yy,+mm-1,+dd); const dow=DOW[dt.getDay()];
     hoverLine.setAttribute("x1",x(i)); hoverLine.setAttribute("x2",x(i)); hoverLine.setAttribute("opacity","0.6");
     hoverDot.setAttribute("cx",x(i)); hoverDot.setAttribute("cy",y(d[metric])); hoverDot.setAttribute("opacity","1");
-    showTip('<div class="t-time">'+dow+', '+MON3[+mm-1]+' '+(+dd)+', '+yy+'</div>'+
+    showTip('<div class="t-time">'+dow+', '+MON_AP[+mm-1]+' '+(+dd)+', '+yy+'</div>'+
       '<div class="t-row"><span>'+label+'</span><b>'+fmt(d[metric],dec)+' '+unit+'</b></div>'+
       '<div class="t-row"><span>'+(metric==="peak"?"Energy used":"Peak demand")+'</span><b>'+(metric==="peak"?fmt(d.energy,1)+' GWh':fmt(d.peak,0)+' MW')+'</b></div>', e.clientX, e.clientY);
   });
@@ -1138,6 +1399,37 @@ function dailyChart(days, opts={}){
   svg.append(rect);
   wrap.append(svg);
   return wrap;
+}
+
+// Generic daily series: opts = {key, unit, label, dec, color, zero}. Nulls are gaps, not zeros.
+function seriesChart(days, opts){
+  const {key, unit, label, dec=0, color, zero=true} = opts;
+  const MON3=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const ns="http://www.w3.org/2000/svg", W=560, H=210, P={l:52,r:12,t:14,b:28};
+  const wrap=el("div","chart"); const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  const n=days.length; const vals=days.map(d=>d[key]).filter(v=>v!=null);
+  if(!vals.length){ wrap.append(svg); return wrap; }
+  const vmin=Math.min(...vals), vmax=Math.max(...vals);
+  const NS=niceScale(zero ? Math.min(0,vmin) : vmin, vmax);
+  const x=i=>P.l+i/(n-1)*(W-P.l-P.r), y=v=>H-P.b-(v-NS.lo)/(NS.hi-NS.lo)*(H-P.t-P.b);
+  const T=(a,b,txt,anchor)=>{ const t=document.createElementNS(ns,"text"); t.setAttribute("x",a); t.setAttribute("y",b); t.setAttribute("text-anchor",anchor); t.setAttribute("fill","var(--faint)"); t.setAttribute("font-size","12"); t.textContent=txt; svg.append(t); };
+  for(const v of NS.ticks){ const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline"); gl.setAttribute("x1",P.l); gl.setAttribute("x2",W-P.r); gl.setAttribute("y1",y(v)); gl.setAttribute("y2",y(v)); if(v===0) gl.setAttribute("stroke","var(--fg2)"); svg.append(gl); T(P.l-8,y(v)+4,fmt(v,NS.dec),"end"); }
+  const starts=[]; let lastM=""; days.forEach((d,i)=>{ const mm=d.d.slice(5,7); if(mm!==lastM){ lastM=mm; starts.push(i); } });
+  // a short partial first month would crowd the next label, so it goes unlabeled
+  starts.forEach((i,k)=>{ if(k===0 && starts.length>1 && starts[1]<12) return; const [yy,mm]=days[i].d.split("-");
+    T(x(i),H-9,MON3[+mm-1]+(mm==="01"?" '"+yy.slice(2):""),i===0?"start":"middle"); });
+  // line with gaps where data is missing
+  let seg=[]; const segs=[];
+  days.forEach((d,i)=>{ if(d[key]==null){ if(seg.length) segs.push(seg); seg=[]; } else seg.push(x(i)+","+y(d[key])); }); if(seg.length) segs.push(seg);
+  for(const sg of segs){ const pl=document.createElementNS(ns,"polyline"); pl.setAttribute("points",sg.join(" ")); pl.setAttribute("fill","none"); pl.setAttribute("stroke",color); pl.setAttribute("stroke-width","1.4"); pl.setAttribute("stroke-linejoin","round"); svg.append(pl); }
+  const hl=document.createElementNS(ns,"line"); hl.setAttribute("stroke","var(--fg2)"); hl.setAttribute("opacity","0"); hl.setAttribute("y1",P.t); hl.setAttribute("y2",H-P.b); svg.append(hl);
+  const rect=document.createElementNS(ns,"rect"); rect.setAttribute("x",P.l); rect.setAttribute("y",P.t); rect.setAttribute("width",W-P.l-P.r); rect.setAttribute("height",H-P.t-P.b); rect.setAttribute("fill","transparent");
+  rect.addEventListener("mousemove",e=>{ const box=svg.getBoundingClientRect(); const px=(e.clientX-box.left)/box.width*W;
+    let i=Math.round((px-P.l)/(W-P.l-P.r)*(n-1)); i=Math.max(0,Math.min(n-1,i)); const d=days[i];
+    hl.setAttribute("x1",x(i)); hl.setAttribute("x2",x(i)); hl.setAttribute("opacity","0.5");
+    showTip('<div class="t-time">'+apDay(d.d)+', '+d.d.slice(0,4)+'</div><div class="t-row"><span>'+label+'</span><b>'+(d[key]==null?"no data":fmt(d[key],dec)+" "+unit)+'</b></div>', e.clientX, e.clientY); });
+  rect.addEventListener("mouseleave",()=>{ hideTip(); hl.setAttribute("opacity","0"); });
+  svg.append(rect); wrap.append(svg); return wrap;
 }
 
 // Scatter of daily high temperature (x) vs NYC peak demand (y), one dot per summer day.
@@ -1151,19 +1443,17 @@ function scatterChart(points, line, opts={}){
   const xmin=60,xmax=104;
   const peaks=points.map(p=>p[1]);
   const dmax=Math.max(...peaks), dmin=Math.min(...peaks);
-  const ymax=Math.ceil((dmax*1.03)/500)*500;
-  const ymin=zero?0:Math.floor((dmin*0.96)/500)*500;
+  const NS=niceScale(zero?0:dmin*0.97, dmax*1.01);
+  const ymax=NS.hi, ymin=NS.lo;
   const X=t=>P.l+(Math.max(xmin,Math.min(xmax,t))-xmin)/(xmax-xmin)*(W-P.l-P.r);
   const Y=v=>H-P.b-(v-ymin)/(ymax-ymin)*(H-P.t-P.b);
-  const ticks=zero?5:4;
-  for(let i=0;i<=ticks;i++){
-    const val=ymin+(ymax-ymin)*i/ticks, yy=Y(val);
+  for(const val of NS.ticks){ const yy=Y(val);
     const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
     gl.setAttribute("x1",P.l);gl.setAttribute("x2",W-P.r);gl.setAttribute("y1",yy);gl.setAttribute("y2",yy);svg.append(gl);
-    const tx=document.createElementNS(ns,"text");tx.setAttribute("x",P.l-8);tx.setAttribute("y",yy+3);tx.setAttribute("text-anchor","end");tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");tx.textContent=fmt(val);svg.append(tx);
+    const tx=document.createElementNS(ns,"text");tx.setAttribute("x",P.l-8);tx.setAttribute("y",yy+3);tx.setAttribute("text-anchor","end");tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","12");tx.setAttribute("font-family","var(--sans)");tx.textContent=fmt(val);svg.append(tx);
   }
   for(let t=60;t<=100;t+=10){
-    const tx=document.createElementNS(ns,"text");tx.setAttribute("x",X(t));tx.setAttribute("y",H-8);tx.setAttribute("text-anchor","middle");tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");tx.textContent=t+"°";svg.append(tx);
+    const tx=document.createElementNS(ns,"text");tx.setAttribute("x",X(t));tx.setAttribute("y",H-8);tx.setAttribute("text-anchor","middle");tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","12");tx.setAttribute("font-family","var(--sans)");tx.textContent=t+"°";svg.append(tx);
   }
   const pxs=[],pys=[];
   for(const p of points){
@@ -1210,22 +1500,22 @@ function bandChart(today, band, priors){
     ...priors.flatMap(p=>p.curve.map(c=>c.nyc)),
     ...today.map(t=>t.v)
   );
-  const ymax=allMax*1.06;
+  const NS=niceScale(0, allMax); const ymax=NS.hi;
   const y=v=>H-P.b-(v/ymax)*(H-P.t-P.b);
   const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
 
   // y gridlines
-  for(let i=0;i<=4;i++){ const val=ymax*i/4, yy=y(val);
+  for(const val of NS.ticks){ const yy=y(val);
     const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
     gl.setAttribute("x1",P.l);gl.setAttribute("x2",W-P.r);gl.setAttribute("y1",yy);gl.setAttribute("y2",yy);svg.append(gl);
     const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",P.l-8);tx.setAttribute("y",yy+3);tx.setAttribute("text-anchor","end");
-    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");
-    tx.textContent=fmt(val/1000,1)+"k"; svg.append(tx);
+    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","12");tx.setAttribute("font-family","var(--sans)");
+    tx.textContent=fmt(val); svg.append(tx);
   }
   for(let hh=0;hh<=24;hh+=4){ const tx=document.createElementNS(ns,"text");
     tx.setAttribute("x",x(hh*60));tx.setAttribute("y",H-8);tx.setAttribute("text-anchor","middle");
-    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");
-    tx.textContent=pad2(hh)+":00"; svg.append(tx);
+    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","12");tx.setAttribute("font-family","var(--sans)");
+    tx.textContent=apHour(hh%24,0); svg.append(tx);
   }
 
   // p10-p90 band
@@ -1260,24 +1550,22 @@ function stackedArea(fuelMix){
   const svg=document.createElementNS(ns,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
   const n=fuelMix.length;
   const totals=fuelMix.map(f=>f.total);
-  const ymax=Math.max(...totals)*1.04;
+  const NS=niceScale(0, Math.max(...totals)); const ymax=NS.hi;
   const x=i=>P.l+i/(n-1)*(W-P.l-P.r);
   const y=v=>H-P.b-(v/ymax)*(H-P.t-P.b);
 
-  const ticks=4;
-  for(let i=0;i<=ticks;i++){
-    const val=ymax*i/ticks, yy=y(val);
+  for(const val of NS.ticks){ const yy=y(val);
     const gl=document.createElementNS(ns,"line"); gl.setAttribute("class","gridline");
     gl.setAttribute("x1",P.l);gl.setAttribute("x2",W-P.r);gl.setAttribute("y1",yy);gl.setAttribute("y2",yy);svg.append(gl);
     const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",P.l-8);tx.setAttribute("y",yy+3);tx.setAttribute("text-anchor","end");
-    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)");
-    tx.textContent=fmt(val/1000,0)+"k"; svg.append(tx);
+    tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","12");tx.setAttribute("font-family","var(--sans)");
+    tx.textContent=fmt(val); svg.append(tx);
   }
   for(let i=0;i<n;i++){
     const mm=fuelMix[i].t.split("T")[1].slice(0,5);
     if(mm.endsWith(":00") && +mm.slice(0,2)%4===0){
       const tx=document.createElementNS(ns,"text"); tx.setAttribute("x",x(i));tx.setAttribute("y",H-8);tx.setAttribute("text-anchor","middle");
-      tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","10.5");tx.setAttribute("font-family","var(--mono)"); tx.textContent=mm; svg.append(tx);
+      tx.setAttribute("fill","var(--faint)");tx.setAttribute("font-size","12");tx.setAttribute("font-family","var(--sans)"); tx.textContent=apHour(+mm.slice(0,2),0); svg.append(tx);
     }
   }
   // build cumulative bands bottom-up using FUEL_ORDER reversed so fossil sits on top
@@ -1301,7 +1589,7 @@ function stackedArea(fuelMix){
     let i=Math.round((px-P.l)/(W-P.l-P.r)*(n-1)); i=Math.max(0,Math.min(n-1,i));
     const f=fuelMix[i];
     hoverLine.setAttribute("x1",x(i));hoverLine.setAttribute("x2",x(i));hoverLine.setAttribute("opacity","0.5");
-    let rows='<div class="t-time">'+hhmm(f.t)+' ET · '+fmt(f.total)+' MW</div>';
+    let rows='<div class="t-time">'+apTime(f.t)+', '+fmt(f.total)+' MW</div>';
     for(const fuel of [...FUEL_ORDER].reverse()){
       if(f.cats[fuel]==null) continue;
       rows+='<div class="t-row"><span style="color:'+FUEL_COLORS[fuel]+'">■</span><span style="flex:1;margin-left:4px">'+fuel+'</span><b>'+fmt(f.cats[fuel])+'</b></div>';
@@ -1314,10 +1602,69 @@ function stackedArea(fuelMix){
   return wrap;
 }
 
+function buildOpening(D, B, HD, ctx){
+  const L = D.latest;
+  const finding = document.getElementById("finding"), lede = document.getElementById("lede"), banner = document.getElementById("banner");
+  // typical load at this 5-minute slot, same kind of day, past four weeks
+  let typ = null, kind = "day";
+  if(B?.typicalDay?.slots?.length){
+    const sl = hhmm(L.t).slice(0,3) + pad2(Math.floor(+hhmm(L.t).slice(3)/5)*5);
+    typ = B.typicalDay.slots.find(s=>s.slot===sl)?.median ?? null;
+    kind = B.typicalDay.dayType==="weekday" ? "weekday" : "weekend day or holiday";
+  }
+  let f = "New York City is drawing <span class='n'>"+fmt(L.nycLoadMW)+" megawatts</span> as of "+apTime(L.t);
+  if(typ){
+    const d = (L.nycLoadMW/typ-1)*100;
+    f += Math.abs(d) < 3 ? ", about what a typical recent "+kind+" draws at this hour."
+       : ", "+fmt(Math.abs(d),0)+"% "+(d>0?"more":"less")+" than a typical recent "+kind+" at this hour.";
+  } else f += ".";
+  finding.innerHTML = f;
+
+  const parts = [];
+  if(L.nycPriceLbmp!=null){
+    let pr = "Wholesale power in the city costs <b>$"+fmt(L.nycPriceLbmp,2)+" a megawatt-hour</b> ("+fmt(ctx.centsKwh,1)+" cents a kilowatt-hour, before delivery charges and taxes)";
+    if(L.nycDayAheadLbmp!=null){
+      const v = L.rtVsDaPct;
+      pr += Math.abs(v) < 5 ? ", close to the $"+fmt(L.nycDayAheadLbmp,0)+" the day-ahead market set for this hour."
+          : ", "+fmt(Math.abs(v),0)+"% "+(v>0?"above":"below")+" the $"+fmt(L.nycDayAheadLbmp,0)+" the day-ahead market set for this hour.";
+    } else pr += ".";
+    parts.push(pr);
+  }
+  if(L.chpeMW!=null){
+    parts.push("The Champlain Hudson Power Express is scheduled to carry <b>"+fmt(L.chpeMW)+" MW of Quebec hydropower</b> into Queens, about "+fmt(L.chpeMW/L.nycLoadMW*100,0)+"% of the city's draw.");
+  }
+  if(L.fuelCats){
+    const st = mixStats(L.fuelCats, D.co2FactorsLbsPerMWh, CLEAN);
+    const upstate = ((L.fuelCats["Nuclear"]||0)+(L.fuelCats["Hydro"]||0))/st.cleanMW*100;
+    parts.push("Statewide, <b>"+fmt(st.cleanPct,0)+"% of generation is carbon-free</b> right now"+(upstate>75? ", nearly all of it upstate nuclear and hydro; the plants inside the city burn gas." : "."));
+  }
+  const fcToday = (D.forecast||[]).filter(x=>x.t.startsWith(D.sourceDate));
+  const fcPeak = fcToday.reduce((m,x)=>x.nyc>m.nyc?x:m, {nyc:-1,t:null});
+  if(fcPeak.t && fcPeak.t > L.t){
+    parts.push("NYISO expects today's peak near <b>"+fmt(fcPeak.nyc)+" MW around "+apTime(fcPeak.t)+"</b>; the high so far is "+fmt(L.peakNyc.mw)+" MW at "+apTime(L.peakNyc.t)+".");
+  } else if(L.peakNyc?.t){
+    parts.push("Today's peak so far is <b>"+fmt(L.peakNyc.mw)+" MW at "+apTime(L.peakNyc.t)+"</b>.");
+  }
+  lede.innerHTML = tidy(parts.join(" "));
+
+  // High-demand mode: a sun-yellow band when the grid is (or is forecast to be) stretched.
+  const tomorrow = addDaysIso(D.sourceDate, 1);
+  const fcTom = (D.forecast||[]).filter(x=>x.t.startsWith(tomorrow));
+  const tomPeak = fcTom.reduce((m,x)=>x.nyc>m.nyc?x:m, {nyc:-1,t:null});
+  const oilNow = L.fuelCats?.["Other Fossil Fuels"] || 0;
+  const rec = HD?.stats?.maxPeak ? " The highest city load in this page's records is "+fmt(HD.stats.maxPeak)+" MW." : "";
+  const msgs = [];
+  if(fcPeak.nyc >= 9500 && fcPeak.t > L.t) msgs.push("NYISO forecasts New York City will peak near <b>"+fmt(fcPeak.nyc)+" MW around "+apTime(fcPeak.t)+" today</b>, heat-wave territory.");
+  else if(tomPeak.nyc >= 9500) msgs.push("NYISO forecasts New York City will peak near <b>"+fmt(tomPeak.nyc)+" MW tomorrow around "+apTime(tomPeak.t)+"</b>, heat-wave territory.");
+  if(L.nycPriceLbmp >= 150) msgs.push("The real-time price has jumped to <b>$"+fmt(L.nycPriceLbmp,0)+" a megawatt-hour</b>.");
+  if(oilNow >= 100) msgs.push("Oil-fired plants, the grid's last resort, are generating <b>"+fmt(oilNow)+" MW</b> statewide.");
+  banner.innerHTML = msgs.length ? '<div class="banner"><b>High demand.</b> '+msgs.join(" ")+(msgs.length? " On days like this the city leans on its peaker plants, mapped below."+rec : "")+'</div>' : "";
+}
+
 function buildMethod(D){
   const factors=Object.entries(D.co2FactorsLbsPerMWh).map(([k,v])=>'<tr><td>'+k+'</td><td class="n">'+v+'</td></tr>').join("");
   document.getElementById("method").innerHTML = `
-    <p>This page reads three public real-time feeds published by the New York Independent System Operator (NYISO) and updates them on a schedule. Every number traces back to a NYISO CSV; any modeling or smoothing is stated below.</p>
+    <p>This page reads public real-time feeds published by the New York Independent System Operator (NYISO) and refreshes them about every 5 minutes. Every number traces back to a NYISO CSV; any modeling or smoothing is stated below.</p>
 
     <h4>Data sources</h4>
     <ul>
@@ -1326,6 +1673,8 @@ function buildMethod(D){
       <li><b>Price:</b> <code>realtime_zone</code> feed — real-time locational-based marginal price (LBMP) by zone, in dollars per megawatt-hour ($/MWh).</li>
       <li><b>Load forecast:</b> <code>isolf</code> feed — NYISO's own zonal load forecast in MW, hourly. This is the <i>same metric</i> (zonal load) from the <i>same operator</i> as the actual load above, which is why the two can be compared directly. The only difference is cadence: the forecast is hourly and set ahead of time, actual load is every 5 minutes.</li>
       <li><b>Day-ahead price:</b> <code>damlbmp_zone</code> feed — day-ahead market LBMP by zone ($/MWh, hourly), cleared the evening before. It is the same LBMP definition as the real-time price, so the two compare directly; the gap between them is the difference between what the market expected and what actually happened.</li>
+      <li><b>Quebec line:</b> <code>ExternalLimitsFlows</code> feed, the row labeled <code>SCH - HQ_CHPE</code>: the scheduled flow on the Champlain Hudson Power Express intertie, 5-minute resolution, with its 1,250 MW limit. It is a schedule, not a metered flow; the two normally match closely on a direct-current line, but the page labels it as scheduled.</li>
+      <li><b>Tomorrow's prices:</b> the next day's <code>damlbmp_zone</code> file, which NYISO posts late in the morning. Until it appears, the look-ahead uses the <code>isolf</code> load forecast.</li>
     </ul>
     <p><b>On comparators:</b> every comparison on this page is drawn between series that share a definition and a source. Forecast-vs-actual and day-ahead-vs-real-time are both NYISO measuring the same quantity two ways. We do not overlay outside datasets whose definitions differ — for example, federal U.S. Energy Information Administration (EIA) "demand" is derived differently from NYISO metered "load," and EIA fuel categories (coal, solar, petroleum) do not map onto NYISO's ("Dual Fuel," "Other Fossil Fuels"), so mixing them would mislead.</p>
 
@@ -1336,6 +1685,15 @@ function buildMethod(D){
       <li><b>Wholesale price</b> is the latest Zone J LBMP. The cents-per-kilowatt-hour figure = $/MWh ÷ 10.</li>
       <li><b>Wholesale spend rate</b> ≈ NYC load (MW) × NYC price ($/MWh) = dollars per hour. The "so far today" total integrates load × price across each 5-minute interval since midnight.</li>
     </ul>
+
+    <h4>The opening sentences</h4>
+    <p>The sentences at the top are written by the page from the same numbers shown below: the latest Zone J load against the median of recent same-type days at the same 5-minute slot (within 3% reads as about typical), the latest real-time price against the day-ahead price for that hour, the latest scheduled Quebec flow, the statewide carbon-free share and NYISO's forecast peak. A notice appears when the forecast peak reaches 9,500 MW, the real-time price reaches $150 per MWh or oil-fired output statewide reaches 100 MW. Those thresholds are the page's own markers of a strained day, not NYISO alert levels.</p>
+
+    <h4>A year on the grid</h4>
+    <p>Built once a day by <code>build-daily-grid.py</code> from NYISO's monthly archives of the same feeds (<code>realtime_zone</code>, <code>damlbmp_zone</code>, <code>rtfuelmix</code>, <code>pal</code> and <code>ExternalLimitsFlows</code>), one row per day for the past 365 days: average and highest real-time price, average day-ahead price, statewide carbon-free share and carbon rate, average load, net imports and the average and highest scheduled Quebec flow. Days already captured are kept, so the record does not shrink when NYISO's per-day files expire. Where 5-minute load files are missing, NYISO's hourly integrated load fills in.</p>
+
+    <h4>Peaker run hours</h4>
+    <p>Operating hours, output and emissions come from the U.S. Environmental Protection Agency's Clean Air Markets Program Data, which every fossil turbine of this size reports to hourly. <code>build-peaker-runs.py</code> matches each EIA plant to its EPA units, sums the quarterly records by year and counts days of operation from the daily records. Status under the state peaker rule comes from NYISO's quarterly reliability reports and state permit records, each linked where it is cited; generator status comes from the newest EIA Form 860M file. The script is re-run by hand when EPA publishes a new quarter.</p>
 
     <h4>Indian Point toggle (illustrative)</h4>
     <p>The "if Indian Point ran" toggle on the generation mix is a counterfactual, clearly labeled as such. It adds 2,060 MW of nuclear — the net summer capacity of the retired Indian Point Energy Center (Unit 2 ~1,020 MW, retired April 30, 2020; Unit 3 ~1,040 MW, retired April 30, 2021, per the U.S. Energy Information Administration) — and removes an equal amount of fossil generation proportionally across natural gas, dual-fuel and other fossil fuels, holding total generation equal to demand. Nuclear plants run as baseload near full output around the clock, so adding the full capacity is a reasonable illustration of scale. It is <i>not</i> a precise simulation: in reality the market would have dispatched plants differently, and prices and interchange would differ. Capacity and dates are verified facts; the displacement is the stated assumption.</p>

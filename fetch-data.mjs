@@ -126,6 +126,18 @@ function fetchFeeds(D) {
   ]);
 }
 
+// Optional feeds: a failure here must never block the core snapshot.
+async function getOptional(url) {
+  try { return await getCsv(url); } catch (e) { console.warn(`  optional feed unavailable: ${url} (${e.message})`); return null; }
+}
+
+// Next Eastern calendar day as YYYYMMDD (noon today + 24h stays clear of DST edges).
+function nextYmd(D) {
+  const d = new Date(Date.UTC(+D.slice(0, 4), +D.slice(4, 6) - 1, +D.slice(6, 8), 12));
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10).replace(/-/g, "");
+}
+
 async function main() {
   // Right after Eastern midnight NYISO may not have posted the new day's files
   // yet, so fall back to the prior Eastern day until they appear.
@@ -143,6 +155,12 @@ async function main() {
     }
   }
   const [fuelTxt, loadTxt, priceTxt, forecastTxt, daPriceTxt] = feeds;
+  // Interchange flows (for the Champlain Hudson Power Express row) and tomorrow's
+  // day-ahead prices, which NYISO posts late morning the day before.
+  const [flowsTxt, daTomorrowTxt] = await Promise.all([
+    getOptional(`https://mis.nyiso.com/public/csv/ExternalLimitsFlows/${D}ExternalLimitsFlows.csv`),
+    getOptional(`https://mis.nyiso.com/public/csv/damlbmp/${nextYmd(D)}damlbmp_zone.csv`),
+  ]);
 
   // ---- fuel mix: group by timestamp ----
   const fuelRows = parseCsv(fuelTxt).slice(1);
@@ -241,6 +259,34 @@ async function main() {
     dayAheadByHour.set(t.slice(0, 13), lbmp);
   }
 
+  // ---- Champlain Hudson Power Express: scheduled flow on its intertie ----
+  // ExternalLimitsFlows mixes internal interfaces and external interties, so its
+  // aggregate is not used anywhere; this one row is a single, clean line: the
+  // scheduled import over CHPE (1,250 MW HVDC, Quebec to Astoria, Queens).
+  // Timestamps here have no seconds ("11/24/2026 08:40"); rows can lead the
+  // clock by a few minutes, so keep only those at or before now.
+  const chpe = [];
+  if (flowsTxt) {
+    for (const r of parseCsv(flowsTxt).slice(1)) {
+      if (r[1] !== "SCH - HQ_CHPE" || !r[0]) continue;
+      let t = parseTs(r[0]);
+      if (t.length === 16) t += ":00";
+      const mw = parseFloat(r[3]), lim = parseFloat(r[4]);
+      if (!Number.isFinite(mw) || t > nowEt) continue;
+      chpe.push({ t, mw, limit: Number.isFinite(lim) ? lim : null });
+    }
+  }
+
+  // ---- tomorrow's NYC day-ahead prices (null until NYISO posts them) ----
+  const dayAheadTomorrow = [];
+  if (daTomorrowTxt) {
+    for (const r of parseCsv(daTomorrowTxt).slice(1)) {
+      if (!r[0] || r[1] !== "N.Y.C.") continue;
+      const lbmp = parseFloat(r[3]);
+      if (Number.isFinite(lbmp)) dayAheadTomorrow.push({ t: parseTs(r[0]), nyc: lbmp });
+    }
+  }
+
   // ---- latest convenience snapshot ----
   const lastFuel = fuelMix[fuelMix.length - 1];
   const lastLoad = load[load.length - 1];
@@ -288,12 +334,17 @@ async function main() {
       fuelCats: lastFuel?.cats ?? null,
       genTotalMW: lastFuel?.total ?? null,
       peakNyc,
+      chpeMW: chpe.length ? chpe[chpe.length - 1].mw : null,
+      chpeT: chpe.length ? chpe[chpe.length - 1].t : null,
+      chpeLimitMW: chpe.length ? chpe[chpe.length - 1].limit : null,
     },
     fuelMix,
     load,
     price,
     forecast,
     dayAhead,
+    dayAheadTomorrow: dayAheadTomorrow.length ? dayAheadTomorrow : null,
+    chpe,
   };
 
   const outPath = `${__dirname}/data/latest.json`;
@@ -306,6 +357,7 @@ async function main() {
       `  vs forecast: ${out.latest.nycForecastMW} MW (${out.latest.loadVsForecastPct > 0 ? "+" : ""}${out.latest.loadVsForecastPct}%)\n` +
       `  NYC price: $${out.latest.nycPriceLbmp}/MWh real-time vs $${out.latest.nycDayAheadLbmp} day-ahead (${out.latest.rtVsDaPct > 0 ? "+" : ""}${out.latest.rtVsDaPct}%)\n` +
       `  -> ~$${out.latest.nycSpendPerHour?.toLocaleString()}/hr wholesale\n` +
+      `  CHPE scheduled: ${out.latest.chpeMW ?? "n/a"} MW at ${out.latest.chpeT ?? "n/a"} (${chpe.length} points); DA tomorrow: ${dayAheadTomorrow.length} hours\n` +
       `  clean gen: ${out.latest.cleanPct}%  |  CO2 rate: ${out.latest.co2RateLbsPerMWh} lbs/MWh\n` +
       `  points: ${fuelMix.length} fuel / ${load.length} load / ${price.length} price (${advisoryDropped} advisory rows dropped)`
   );

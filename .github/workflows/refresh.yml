@@ -104,6 +104,7 @@ jobs:
               echo "Rebuilding baseline + daily load for $today"
               python3 build-daily-load.py || echo "::warning::daily-load build failed"
               node build-baseline.mjs || echo "::warning::baseline build failed"
+              python3 build-daily-grid.py || echo "::warning::daily-grid build failed"
               git add data/baseline.json data/daily-load.json data/history
               git diff --staged --quiet || { git commit -q -m "Rebuild historical baseline + daily load [skip ci]"; push; }
             fi

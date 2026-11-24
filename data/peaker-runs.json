@@ -1,0 +1,5802 @@
+{
+ "generatedAt": "2026-11-24T14:11:46Z",
+ "ytdThrough": "2026-Q3",
+ "quartersPublished": {
+  "2023": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "2024": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "2025": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "2026": [
+   1,
+   2,
+   3
+  ]
+ },
+ "sources": {
+  "campd": "U.S. EPA Clean Air Markets Program Data API, https://api.epa.gov/easey/ (documentation: https://www.epa.gov/power-sector/cam-api-portal)",
+  "campdEndpoints": [
+   "https://api.epa.gov/easey/facilities-mgmt/facilities/attributes",
+   "https://api.epa.gov/easey/streaming-services/emissions/apportioned/quarterly",
+   "https://api.epa.gov/easey/streaming-services/emissions/apportioned/daily"
+  ],
+  "eia860mIds": {
+   "file": "march_generator2026.xlsx",
+   "url": "https://www.eia.gov/electricity/data/eia860m/xls/march_generator2026.xlsx",
+   "use": "plant (ORIS) and generator IDs, same workbook as data/peakers.json"
+  },
+  "eia860mStatus": {
+   "file": "september_generator2026.xlsx",
+   "url": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+   "use": "generator status, planned and actual retirements"
+  },
+  "peakerRule": [
+   "https://extapps.dec.ny.gov/data/dar/afs/permits/prr_261020008600011_r4.pdf",
+   "https://www.nyiso.com/documents/20142/39103148/2025-Q3-STAR-Report-Final.pdf",
+   "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9"
+  ]
+ },
+ "definitions": {
+  "orisCode": "EIA plant ID, which is the same number EPA uses as the facility's ORIS code.",
+  "covered": "True when at least one EPA CAMPD unit was matched to the plant's peaker generators; false means EPA has no emissions reporting for it.",
+  "match": "How the EPA units were tied to the plant's EIA generators.",
+  "units": "EIA generator IDs at the plant that pass the peakers.json filter (prime mover GT or IC, grid-serving sector).",
+  "epaUnits": "The EPA reporting units counted for the plant, with the EIA generators EPA ties to each and per-unit hours by year.",
+  "quartersReported": "Calendar quarters for which EPA has emissions records for any of the plant's units in that year.",
+  "unitsReporting": "Number of the plant's EPA units with at least one emissions record that year (a unit can report zero operation).",
+  "unitsThatRan": "Number of those units with more than zero operating hours that year.",
+  "operatingHoursAllUnits": "EPA operating time (sumOpTime) summed across units; double-counts hours when several units ran at once.",
+  "operatingHoursMaxUnit": "Operating hours of the single unit that ran the most that year; the cleaner answer to how many hours the plant ran.",
+  "hoursWithAnyOperationMaxUnit": "For the busiest unit, the count of clock hours in which it operated at all, even briefly (EPA countOpTime).",
+  "grossLoadMWh": "Gross electrical output in megawatt-hours, summed across units (before the plant's own use).",
+  "heatInputMMBtu": "Fuel heat input in million British thermal units, summed across units.",
+  "co2Tons": "Carbon dioxide emitted, short tons, summed across units.",
+  "noxTons": "Nitrogen oxides emitted, short tons, summed across units.",
+  "daysAnyUnitOperated": "Number of calendar days in 2025 on which at least one of the plant's units had operating time (from EPA daily data).",
+  "ytdThrough": "Latest calendar quarter of the current year that EPA has published for these plants.",
+  "retirement": "Generator status from the newest EIA 860M workbook: planned retirement dates, generators on its Retired sheet, and generators marked out of service.",
+  "peakerRule": "Short notes on the New York DEC Peaker Rule (6 NYCRR Subpart 227-3) and NYISO reliability designations, each with a primary-source URL and quote; omitted where no primary source was found.",
+  "totals": "Sums across all covered plants per year (null values skipped).",
+  "totalsExcludingCombinedCycle": "The same sums leaving out plants whose EPA units are combined-cycle (East River), i.e. the simple-cycle peakers only."
+ },
+ "totals": {
+  "2023": {
+   "grossLoadMWh": 2772319.0,
+   "heatInputMMBtu": 29573748.0,
+   "co2Tons": 1758923.2,
+   "noxTons": 235.36,
+   "operatingHoursAllUnits": 31537.1
+  },
+  "2024": {
+   "grossLoadMWh": 3007551.0,
+   "heatInputMMBtu": 32058482.0,
+   "co2Tons": 1905591.9,
+   "noxTons": 277.02,
+   "operatingHoursAllUnits": 35176.3
+  },
+  "2025": {
+   "grossLoadMWh": 3078354.0,
+   "heatInputMMBtu": 33819936.0,
+   "co2Tons": 2019738.8,
+   "noxTons": 767.97,
+   "operatingHoursAllUnits": 43332.8
+  },
+  "2026": {
+   "grossLoadMWh": 2407677.0,
+   "heatInputMMBtu": 25445233.0,
+   "co2Tons": 1517526.5,
+   "noxTons": 248.85,
+   "operatingHoursAllUnits": 29046.2
+  }
+ },
+ "totalsExcludingCombinedCycle": {
+  "2023": {
+   "grossLoadMWh": 639708.0,
+   "heatInputMMBtu": 6864279.0,
+   "co2Tons": 409195.9,
+   "noxTons": 155.06,
+   "operatingHoursAllUnits": 17157.6
+  },
+  "2024": {
+   "grossLoadMWh": 749006.0,
+   "heatInputMMBtu": 7894750.0,
+   "co2Tons": 469564.4,
+   "noxTons": 192.28,
+   "operatingHoursAllUnits": 19895.6
+  },
+  "2025": {
+   "grossLoadMWh": 890076.0,
+   "heatInputMMBtu": 10403850.0,
+   "co2Tons": 628016.7,
+   "noxTons": 684.41,
+   "operatingHoursAllUnits": 28452.1
+  },
+  "2026": {
+   "grossLoadMWh": 641293.0,
+   "heatInputMMBtu": 6832400.0,
+   "co2Tons": 411357.4,
+   "noxTons": 181.87,
+   "operatingHoursAllUnits": 17669.5
+  }
+ },
+ "plants": [
+  {
+   "plant": "Gowanus Gas Turbines Generating",
+   "borough": "Brooklyn",
+   "orisCode": 2494,
+   "eiaOwner": "U S Power Generating Company LLC",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "GT11",
+    "GT12",
+    "GT13",
+    "GT14",
+    "GT15",
+    "GT16",
+    "GT17",
+    "GT18",
+    "GT21",
+    "GT22",
+    "GT23",
+    "GT24",
+    "GT25",
+    "GT26",
+    "GT27",
+    "GT28",
+    "GT31",
+    "GT32",
+    "GT33",
+    "GT34",
+    "GT35",
+    "GT36",
+    "GT37",
+    "GT38",
+    "GT41",
+    "GT42",
+    "GT43",
+    "GT44",
+    "GT45",
+    "GT46",
+    "GT47",
+    "GT48"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT01-1",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT11"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT01-2",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT12"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT01-3",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT13"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT01-4",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT14"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT01-5",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT15"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT01-6",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT16"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT01-7",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT17"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT01-8",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT18"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT02-1",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT21"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 26.1,
+       "hoursWithAnyOperation": 35,
+       "grossLoadMWh": 392,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 54.2,
+       "hoursWithAnyOperation": 68,
+       "grossLoadMWh": 825,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 43.5,
+       "hoursWithAnyOperation": 60,
+       "grossLoadMWh": 670,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 56.9,
+       "hoursWithAnyOperation": 71,
+       "grossLoadMWh": 877,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT02-2",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT22"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 48.5,
+       "hoursWithAnyOperation": 61,
+       "grossLoadMWh": 720,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 36.4,
+       "hoursWithAnyOperation": 50,
+       "grossLoadMWh": 568,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 40.2,
+       "hoursWithAnyOperation": 56,
+       "grossLoadMWh": 639,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 55.5,
+       "hoursWithAnyOperation": 68,
+       "grossLoadMWh": 860,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT02-3",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT23"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 48.2,
+       "hoursWithAnyOperation": 60,
+       "grossLoadMWh": 808,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 77.8,
+       "hoursWithAnyOperation": 98,
+       "grossLoadMWh": 1289,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 51.3,
+       "hoursWithAnyOperation": 70,
+       "grossLoadMWh": 870,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 59.7,
+       "hoursWithAnyOperation": 75,
+       "grossLoadMWh": 990,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT02-4",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT24"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 44.3,
+       "hoursWithAnyOperation": 58,
+       "grossLoadMWh": 622,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 42.5,
+       "hoursWithAnyOperation": 52,
+       "grossLoadMWh": 652,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 42.7,
+       "hoursWithAnyOperation": 59,
+       "grossLoadMWh": 645,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 55.9,
+       "hoursWithAnyOperation": 72,
+       "grossLoadMWh": 874,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT02-5",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT25"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 60.8,
+       "hoursWithAnyOperation": 78,
+       "grossLoadMWh": 952,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 43.3,
+       "hoursWithAnyOperation": 56,
+       "grossLoadMWh": 681,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 51.8,
+       "hoursWithAnyOperation": 69,
+       "grossLoadMWh": 825,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 56.4,
+       "hoursWithAnyOperation": 74,
+       "grossLoadMWh": 899,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT02-6",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT26"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 46.4,
+       "hoursWithAnyOperation": 58,
+       "grossLoadMWh": 762,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 36.6,
+       "hoursWithAnyOperation": 48,
+       "grossLoadMWh": 594,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 53.5,
+       "hoursWithAnyOperation": 76,
+       "grossLoadMWh": 902,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 60.3,
+       "hoursWithAnyOperation": 78,
+       "grossLoadMWh": 1001,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT02-7",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT27"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 66.8,
+       "hoursWithAnyOperation": 83,
+       "grossLoadMWh": 1108,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 63.6,
+       "hoursWithAnyOperation": 79,
+       "grossLoadMWh": 1057,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 53.6,
+       "hoursWithAnyOperation": 74,
+       "grossLoadMWh": 906,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 55.6,
+       "hoursWithAnyOperation": 70,
+       "grossLoadMWh": 926,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT02-8",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT28"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 57.0,
+       "hoursWithAnyOperation": 75,
+       "grossLoadMWh": 814,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 54.9,
+       "hoursWithAnyOperation": 68,
+       "grossLoadMWh": 866,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 44.3,
+       "hoursWithAnyOperation": 64,
+       "grossLoadMWh": 690,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 57.8,
+       "hoursWithAnyOperation": 73,
+       "grossLoadMWh": 906,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT03-1",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT31"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 28.7,
+       "hoursWithAnyOperation": 41,
+       "grossLoadMWh": 421,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 24.3,
+       "hoursWithAnyOperation": 34,
+       "grossLoadMWh": 384,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 340.9,
+       "hoursWithAnyOperation": 388,
+       "grossLoadMWh": 5724,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 15.9,
+       "hoursWithAnyOperation": 25,
+       "grossLoadMWh": 254,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT03-2",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT32"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 36.1,
+       "hoursWithAnyOperation": 52,
+       "grossLoadMWh": 550,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 41.1,
+       "hoursWithAnyOperation": 52,
+       "grossLoadMWh": 630,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 570.1,
+       "hoursWithAnyOperation": 624,
+       "grossLoadMWh": 9598,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 13.1,
+       "hoursWithAnyOperation": 22,
+       "grossLoadMWh": 212,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT03-3",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT33"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 24.1,
+       "hoursWithAnyOperation": 36,
+       "grossLoadMWh": 403,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 46.3,
+       "hoursWithAnyOperation": 58,
+       "grossLoadMWh": 659,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 580.7,
+       "hoursWithAnyOperation": 630,
+       "grossLoadMWh": 9787,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 17.9,
+       "hoursWithAnyOperation": 26,
+       "grossLoadMWh": 295,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT03-4",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT34"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 37.7,
+       "hoursWithAnyOperation": 56,
+       "grossLoadMWh": 586,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 13.3,
+       "hoursWithAnyOperation": 22,
+       "grossLoadMWh": 208,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 359.2,
+       "hoursWithAnyOperation": 399,
+       "grossLoadMWh": 6018,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 17.6,
+       "hoursWithAnyOperation": 26,
+       "grossLoadMWh": 286,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT03-5",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT35"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 27.0,
+       "hoursWithAnyOperation": 41,
+       "grossLoadMWh": 448,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 50.0,
+       "hoursWithAnyOperation": 60,
+       "grossLoadMWh": 791,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 346.3,
+       "hoursWithAnyOperation": 377,
+       "grossLoadMWh": 5829,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 17.6,
+       "hoursWithAnyOperation": 24,
+       "grossLoadMWh": 286,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT03-6",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT36"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 23.8,
+       "hoursWithAnyOperation": 39,
+       "grossLoadMWh": 358,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 21.1,
+       "hoursWithAnyOperation": 31,
+       "grossLoadMWh": 326,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1.7,
+       "hoursWithAnyOperation": 2,
+       "grossLoadMWh": 29,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT03-7",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT37"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 35.5,
+       "hoursWithAnyOperation": 48,
+       "grossLoadMWh": 580,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 54.9,
+       "hoursWithAnyOperation": 73,
+       "grossLoadMWh": 886,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 600.3,
+       "hoursWithAnyOperation": 651,
+       "grossLoadMWh": 10135,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 17.0,
+       "hoursWithAnyOperation": 24,
+       "grossLoadMWh": 283,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT03-8",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT38"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 22.7,
+       "hoursWithAnyOperation": 35,
+       "grossLoadMWh": 367,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 57.5,
+       "hoursWithAnyOperation": 73,
+       "grossLoadMWh": 906,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 306.9,
+       "hoursWithAnyOperation": 347,
+       "grossLoadMWh": 5161,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 15.5,
+       "hoursWithAnyOperation": 26,
+       "grossLoadMWh": 254,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT04-1",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT41"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT04-2",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT42"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT04-3",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT43"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT04-4",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT44"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT04-5",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT45"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT04-6",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT46"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT04-7",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT47"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2494,
+     "epaUnitId": "CT04-8",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT48"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 32,
+     "unitsThatRan": 16,
+     "operatingHoursAllUnits": 633.7,
+     "operatingHoursMaxUnit": 66.8,
+     "hoursWithAnyOperationMaxUnit": 83,
+     "grossLoadMWh": 9890,
+     "heatInputMMBtu": 170221,
+     "co2Tons": 10045.1,
+     "noxTons": 26.32
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 32,
+     "unitsThatRan": 16,
+     "operatingHoursAllUnits": 717.8,
+     "operatingHoursMaxUnit": 77.8,
+     "hoursWithAnyOperationMaxUnit": 98,
+     "grossLoadMWh": 11323,
+     "heatInputMMBtu": 191480,
+     "co2Tons": 11295.9,
+     "noxTons": 29.21
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 16,
+     "unitsThatRan": 16,
+     "operatingHoursAllUnits": 3487.0,
+     "operatingHoursMaxUnit": 600.3,
+     "hoursWithAnyOperationMaxUnit": 651,
+     "grossLoadMWh": 58430,
+     "heatInputMMBtu": 1058142,
+     "co2Tons": 65610.0,
+     "noxTons": 225.06,
+     "daysAnyUnitOperated": 107
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 16,
+     "unitsThatRan": 15,
+     "operatingHoursAllUnits": 572.7,
+     "operatingHoursMaxUnit": 60.3,
+     "hoursWithAnyOperationMaxUnit": 78,
+     "grossLoadMWh": 9203,
+     "heatInputMMBtu": 143708,
+     "co2Tons": 8966.9,
+     "noxTons": 24.82
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "GT11",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 19.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT12",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT13",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.2,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT14",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT15",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 16.5,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT16",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 18.0,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT17",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.6,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT18",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.9,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT21",
+      "status": "(OP) Operating",
+      "netSummerMW": 17.9,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT22",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.8,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT23",
+      "status": "(OP) Operating",
+      "netSummerMW": 20.6,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT24",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.3,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT25",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.6,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT26",
+      "status": "(OP) Operating",
+      "netSummerMW": 20.3,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT27",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.6,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT28",
+      "status": "(OP) Operating",
+      "netSummerMW": 17.7,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT31",
+      "status": "(OP) Operating",
+      "netSummerMW": 17.7,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT32",
+      "status": "(OP) Operating",
+      "netSummerMW": 17.7,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT33",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.8,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT34",
+      "status": "(OP) Operating",
+      "netSummerMW": 17.9,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT35",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.0,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT36",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.6,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT37",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT38",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.0,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT41",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 16.8,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT42",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.3,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT43",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.6,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT44",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT45",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 17.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT46",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 18.6,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT47",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 16.6,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT48",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 19.0,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": [
+     "GT11",
+     "GT12",
+     "GT13",
+     "GT14",
+     "GT15",
+     "GT16",
+     "GT17",
+     "GT18",
+     "GT36",
+     "GT41",
+     "GT42",
+     "GT43",
+     "GT44",
+     "GT45",
+     "GT46",
+     "GT47",
+     "GT48"
+    ]
+   },
+   "peakerRule": {
+    "summary": "Subject to the DEC Peaker Rule (6 NYCRR Subpart 227-3). NYISO lists Gowanus 1-1 through 1-8 and 4-1 through 4-8 (the oil-fired units) as retired Nov. 1, 2022; Gowanus 2 and 3 are designated by NYISO as needed for New York City reliability until May 1, 2029.",
+    "sources": [
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2026 Quarter 1, Figure 2 'Status Changes Due to DEC Peaker Rule'",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9",
+      "quote": "Gowanus 1-1 through 1-8 ... 11/1/2022 (R) ... Gowanus 4-1 through 4-8 ... 11/1/2022 (R)"
+     },
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2026 Quarter 1 (April 15, 2026)",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9",
+      "quote": "designating the Gowanus 2 & 3 and Narrows 1 & 2 generators as needed to address ongoing reliability needs until May 1, 2029"
+     },
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2026 Quarter 1 (April 15, 2026)",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9",
+      "quote": "AlphaGen, the owner, has proposed to withdraw the generator deactivation notices for these generators."
+     },
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2025 Quarter 3 (October 2025)",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2025-Q3-STAR-Report-Final.pdf",
+      "quote": "designation of the Gowanus 2 & 3 and Narrows 1 & 2 generators under the DEC Peaker Rule in 2023 has allowed their continued operation beyond May 1, 2025"
+     }
+    ]
+   },
+   "notes": [
+    "16 EPA units (CT01-1, CT01-2, CT01-3, CT01-4, CT01-5, CT01-6, CT01-7, CT01-8, CT04-1, CT04-2, CT04-3, CT04-4, CT04-5, CT04-6, CT04-7, CT04-8) appear in EPA's unit inventory only through 2024 and report no emissions after that."
+   ]
+  },
+  {
+   "plant": "Narrows Gas Turbines Generating",
+   "borough": "Brooklyn",
+   "orisCode": 2499,
+   "eiaOwner": "U S Power Generating Company LLC",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "NT11",
+    "NT12",
+    "NT13",
+    "NT14",
+    "NT15",
+    "NT16",
+    "NT17",
+    "NT18",
+    "NT21",
+    "NT22",
+    "NT23",
+    "NT24",
+    "NT25",
+    "NT26",
+    "NT27",
+    "NT28"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT01-1",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT11"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 124.4,
+       "hoursWithAnyOperation": 145,
+       "grossLoadMWh": 2052,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 166.3,
+       "hoursWithAnyOperation": 201,
+       "grossLoadMWh": 2737,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 214.7,
+       "hoursWithAnyOperation": 268,
+       "grossLoadMWh": 3553,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 109.8,
+       "hoursWithAnyOperation": 135,
+       "grossLoadMWh": 1820,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT01-2",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT12"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 49.7,
+       "hoursWithAnyOperation": 63,
+       "grossLoadMWh": 755,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 111.6,
+       "hoursWithAnyOperation": 138,
+       "grossLoadMWh": 1700,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 118.2,
+       "hoursWithAnyOperation": 146,
+       "grossLoadMWh": 1858,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 110.6,
+       "hoursWithAnyOperation": 134,
+       "grossLoadMWh": 1740,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT01-3",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT13"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 77.0,
+       "hoursWithAnyOperation": 89,
+       "grossLoadMWh": 1181,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 127.2,
+       "hoursWithAnyOperation": 159,
+       "grossLoadMWh": 2021,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 123.8,
+       "hoursWithAnyOperation": 155,
+       "grossLoadMWh": 1992,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 94.2,
+       "hoursWithAnyOperation": 112,
+       "grossLoadMWh": 1492,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT01-4",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT14"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 109.3,
+       "hoursWithAnyOperation": 130,
+       "grossLoadMWh": 1782,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 150.9,
+       "hoursWithAnyOperation": 184,
+       "grossLoadMWh": 2474,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 178.5,
+       "hoursWithAnyOperation": 223,
+       "grossLoadMWh": 2960,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 119.7,
+       "hoursWithAnyOperation": 142,
+       "grossLoadMWh": 1976,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT01-5",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT15"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 163.8,
+       "hoursWithAnyOperation": 194,
+       "grossLoadMWh": 2763,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 227.1,
+       "hoursWithAnyOperation": 269,
+       "grossLoadMWh": 3839,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 180.6,
+       "hoursWithAnyOperation": 222,
+       "grossLoadMWh": 3037,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 120.7,
+       "hoursWithAnyOperation": 146,
+       "grossLoadMWh": 2014,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT01-6",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT16"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 49.6,
+       "hoursWithAnyOperation": 60,
+       "grossLoadMWh": 691,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 118.8,
+       "hoursWithAnyOperation": 150,
+       "grossLoadMWh": 1902,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 103.3,
+       "hoursWithAnyOperation": 125,
+       "grossLoadMWh": 1597,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 107.8,
+       "hoursWithAnyOperation": 128,
+       "grossLoadMWh": 1636,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT01-7",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT17"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 105.2,
+       "hoursWithAnyOperation": 125,
+       "grossLoadMWh": 1745,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 180.6,
+       "hoursWithAnyOperation": 218,
+       "grossLoadMWh": 2986,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 94.3,
+       "hoursWithAnyOperation": 112,
+       "grossLoadMWh": 1550,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 90.3,
+       "hoursWithAnyOperation": 109,
+       "grossLoadMWh": 1477,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT01-8",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT18"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 67.7,
+       "hoursWithAnyOperation": 80,
+       "grossLoadMWh": 989,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 119.3,
+       "hoursWithAnyOperation": 151,
+       "grossLoadMWh": 1910,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 98.5,
+       "hoursWithAnyOperation": 125,
+       "grossLoadMWh": 1562,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 95.0,
+       "hoursWithAnyOperation": 117,
+       "grossLoadMWh": 1482,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT02-1",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT21"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 149.0,
+       "hoursWithAnyOperation": 182,
+       "grossLoadMWh": 2445,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 219.9,
+       "hoursWithAnyOperation": 264,
+       "grossLoadMWh": 3699,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 42.8,
+       "hoursWithAnyOperation": 49,
+       "grossLoadMWh": 716,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT02-2",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT22"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 90.5,
+       "hoursWithAnyOperation": 111,
+       "grossLoadMWh": 1338,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 122.4,
+       "hoursWithAnyOperation": 148,
+       "grossLoadMWh": 1938,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 810.4,
+       "hoursWithAnyOperation": 872,
+       "grossLoadMWh": 13565,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 254.5,
+       "hoursWithAnyOperation": 276,
+       "grossLoadMWh": 4126,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT02-3",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT23"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 90.8,
+       "hoursWithAnyOperation": 112,
+       "grossLoadMWh": 1405,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 139.1,
+       "hoursWithAnyOperation": 166,
+       "grossLoadMWh": 2228,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1093.6,
+       "hoursWithAnyOperation": 1167,
+       "grossLoadMWh": 18354,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 277.9,
+       "hoursWithAnyOperation": 310,
+       "grossLoadMWh": 4441,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT02-4",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT24"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 177.8,
+       "hoursWithAnyOperation": 218,
+       "grossLoadMWh": 2987,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 167.4,
+       "hoursWithAnyOperation": 198,
+       "grossLoadMWh": 2768,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1251.7,
+       "hoursWithAnyOperation": 1311,
+       "grossLoadMWh": 21160,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 301.4,
+       "hoursWithAnyOperation": 336,
+       "grossLoadMWh": 5068,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT02-5",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT25"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 188.8,
+       "hoursWithAnyOperation": 236,
+       "grossLoadMWh": 3213,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 195.5,
+       "hoursWithAnyOperation": 234,
+       "grossLoadMWh": 3298,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1254.3,
+       "hoursWithAnyOperation": 1305,
+       "grossLoadMWh": 21229,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 247.0,
+       "hoursWithAnyOperation": 271,
+       "grossLoadMWh": 4086,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT02-6",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT26"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 78.1,
+       "hoursWithAnyOperation": 100,
+       "grossLoadMWh": 1137,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 148.7,
+       "hoursWithAnyOperation": 184,
+       "grossLoadMWh": 2436,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1202.9,
+       "hoursWithAnyOperation": 1244,
+       "grossLoadMWh": 20400,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 303.5,
+       "hoursWithAnyOperation": 340,
+       "grossLoadMWh": 5103,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT02-7",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT27"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 125.4,
+       "hoursWithAnyOperation": 157,
+       "grossLoadMWh": 2024,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 136.2,
+       "hoursWithAnyOperation": 163,
+       "grossLoadMWh": 2230,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 120.8,
+       "hoursWithAnyOperation": 139,
+       "grossLoadMWh": 2054,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2499,
+     "epaUnitId": "CT02-8",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "NT28"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": "Diesel Oil",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 71.9,
+       "hoursWithAnyOperation": 94,
+       "grossLoadMWh": 1029,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 95.2,
+       "hoursWithAnyOperation": 119,
+       "grossLoadMWh": 1500,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 869.8,
+       "hoursWithAnyOperation": 930,
+       "grossLoadMWh": 14579,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 233.6,
+       "hoursWithAnyOperation": 261,
+       "grossLoadMWh": 3737,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 16,
+     "unitsThatRan": 16,
+     "operatingHoursAllUnits": 1719.0,
+     "operatingHoursMaxUnit": 188.8,
+     "hoursWithAnyOperationMaxUnit": 236,
+     "grossLoadMWh": 27534,
+     "heatInputMMBtu": 475123,
+     "co2Tons": 28049.8,
+     "noxTons": 85.54
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 16,
+     "unitsThatRan": 16,
+     "operatingHoursAllUnits": 2426.2,
+     "operatingHoursMaxUnit": 227.1,
+     "hoursWithAnyOperationMaxUnit": 269,
+     "grossLoadMWh": 39668,
+     "heatInputMMBtu": 665615,
+     "co2Tons": 39975.8,
+     "noxTons": 122.45
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 16,
+     "unitsThatRan": 16,
+     "operatingHoursAllUnits": 7758.2,
+     "operatingHoursMaxUnit": 1254.3,
+     "hoursWithAnyOperationMaxUnit": 1311,
+     "grossLoadMWh": 130167,
+     "heatInputMMBtu": 2310170,
+     "co2Tons": 138399.0,
+     "noxTons": 424.44,
+     "daysAnyUnitOperated": 150
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 16,
+     "unitsThatRan": 14,
+     "operatingHoursAllUnits": 2466.0,
+     "operatingHoursMaxUnit": 303.5,
+     "hoursWithAnyOperationMaxUnit": 340,
+     "grossLoadMWh": 40197,
+     "heatInputMMBtu": 711964,
+     "co2Tons": 43356.3,
+     "noxTons": 122.98
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "NT11",
+      "status": "(OP) Operating",
+      "netSummerMW": 21.0,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT12",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.5,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT13",
+      "status": "(OP) Operating",
+      "netSummerMW": 20.4,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT14",
+      "status": "(OP) Operating",
+      "netSummerMW": 20.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT15",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.8,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT16",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.9,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT17",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.4,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT18",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.9,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT21",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 19.4,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT22",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.7,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT23",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.4,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT24",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.4,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT25",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.9,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT26",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT27",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 20.7,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "NT28",
+      "status": "(OP) Operating",
+      "netSummerMW": 17.5,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": [
+     "NT21",
+     "NT27"
+    ]
+   },
+   "peakerRule": {
+    "summary": "Subject to the DEC Peaker Rule. All 16 Narrows turbines (Narrows 1 and 2) are designated by NYISO as needed for New York City reliability until May 1, 2029; DEC's permit review says the site stopped burning oil in the ozone season from May 1, 2023.",
+    "sources": [
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2026 Quarter 1 (April 15, 2026)",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9",
+      "quote": "designating the Gowanus 2 & 3 and Narrows 1 & 2 generators as needed to address ongoing reliability needs until May 1, 2029"
+     },
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2026 Quarter 1 (April 15, 2026)",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9",
+      "quote": "AlphaGen, the owner, has proposed to withdraw the generator deactivation notices for these generators."
+     },
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2025 Quarter 3 (October 2025)",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2025-Q3-STAR-Report-Final.pdf",
+      "quote": "designation of the Gowanus 2 & 3 and Narrows 1 & 2 generators under the DEC Peaker Rule in 2023 has allowed their continued operation beyond May 1, 2025"
+     },
+     {
+      "source": "NY DEC, Permit Review Report, Narrows Generating Station, Permit 2-6102-00086/00011, Renewal 4 (04/03/2026)",
+      "url": "https://extapps.dec.ny.gov/data/dar/afs/permits/prr_261020008600011_r4.pdf",
+      "quote": "Since May 1, 2023, The facility stopped operation of its combustion turbines burning oil fuel during the ozone season."
+     },
+     {
+      "source": "NY DEC, Permit Review Report, Narrows Generating Station (04/03/2026)",
+      "url": "https://extapps.dec.ny.gov/data/dar/afs/permits/prr_261020008600011_r4.pdf",
+      "quote": "Beginning May 1, 2025, the facility is operating under the New York Independent System Operator (NYISO) reliability determination."
+     }
+    ]
+   },
+   "notes": []
+  },
+  {
+   "plant": "East River",
+   "borough": "Manhattan",
+   "orisCode": 2493,
+   "eiaOwner": "Consolidated Edison Co-NY Inc",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "1",
+    "2"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 2493,
+     "epaUnitId": "1",
+     "unitType": "Combined cycle",
+     "eiaGenerators": [
+      "1"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 7356.25,
+       "hoursWithAnyOperation": 7373,
+       "grossLoadMWh": 1087150,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 7620.75,
+       "hoursWithAnyOperation": 7626,
+       "grossLoadMWh": 1120541,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 7698.0,
+       "hoursWithAnyOperation": 7709,
+       "grossLoadMWh": 1093278,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 5372.25,
+       "hoursWithAnyOperation": 5380,
+       "grossLoadMWh": 825221,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2493,
+     "epaUnitId": "2",
+     "unitType": "Combined cycle",
+     "eiaGenerators": [
+      "2"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 7023.25,
+       "hoursWithAnyOperation": 7033,
+       "grossLoadMWh": 1045461,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 7660.0,
+       "hoursWithAnyOperation": 7665,
+       "grossLoadMWh": 1138004,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 7182.75,
+       "hoursWithAnyOperation": 7192,
+       "grossLoadMWh": 1094999,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 6004.5,
+       "hoursWithAnyOperation": 6009,
+       "grossLoadMWh": 941162,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 14379.5,
+     "operatingHoursMaxUnit": 7356.25,
+     "hoursWithAnyOperationMaxUnit": 7373,
+     "grossLoadMWh": 2132611,
+     "heatInputMMBtu": 22709469,
+     "co2Tons": 1349727.3,
+     "noxTons": 80.3
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 15280.75,
+     "operatingHoursMaxUnit": 7660.0,
+     "hoursWithAnyOperationMaxUnit": 7665,
+     "grossLoadMWh": 2258545,
+     "heatInputMMBtu": 24163732,
+     "co2Tons": 1436027.5,
+     "noxTons": 84.74
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 14880.75,
+     "operatingHoursMaxUnit": 7698.0,
+     "hoursWithAnyOperationMaxUnit": 7709,
+     "grossLoadMWh": 2188278,
+     "heatInputMMBtu": 23416086,
+     "co2Tons": 1391722.1,
+     "noxTons": 83.56,
+     "daysAnyUnitOperated": 365
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 11376.75,
+     "operatingHoursMaxUnit": 6004.5,
+     "hoursWithAnyOperationMaxUnit": 6009,
+     "grossLoadMWh": 1766384,
+     "heatInputMMBtu": 18612833,
+     "co2Tons": 1106169.1,
+     "noxTons": 66.98
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "1",
+      "status": "(OP) Operating",
+      "netSummerMW": 152.1,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "2",
+      "status": "(OP) Operating",
+      "netSummerMW": 153.9,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": [
+    "EPA classifies these units as combined-cycle (sourceCategory: Cogeneration), not simple-cycle peakers, though EIA records their prime mover as GT."
+   ]
+  },
+  {
+   "plant": "Vernon Boulevard",
+   "borough": "Queens",
+   "orisCode": 7909,
+   "eiaOwner": "New York Power Authority",
+   "covered": true,
+   "match": "generator IDs differ between EPA and EIA, so all combustion-turbine units at the same ORIS code are used (EIA: VG02, VG03; EPA: VB01, VB02)",
+   "units": [
+    "VG02",
+    "VG03"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 7909,
+     "epaUnitId": "VB01",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "VB01"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 1606.68,
+       "hoursWithAnyOperation": 1938,
+       "grossLoadMWh": 64927,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1450.44,
+       "hoursWithAnyOperation": 1799,
+       "grossLoadMWh": 58145,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1304.87,
+       "hoursWithAnyOperation": 1569,
+       "grossLoadMWh": 52794,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 1894.17,
+       "hoursWithAnyOperation": 2243,
+       "grossLoadMWh": 76236,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 7909,
+     "epaUnitId": "VB02",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "VB02"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 1606.56,
+       "hoursWithAnyOperation": 1958,
+       "grossLoadMWh": 63567,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1737.26,
+       "hoursWithAnyOperation": 2112,
+       "grossLoadMWh": 68183,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1924.63,
+       "hoursWithAnyOperation": 2318,
+       "grossLoadMWh": 75813,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 1842.46,
+       "hoursWithAnyOperation": 2141,
+       "grossLoadMWh": 70074,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 3213.24,
+     "operatingHoursMaxUnit": 1606.68,
+     "hoursWithAnyOperationMaxUnit": 1958,
+     "grossLoadMWh": 128494,
+     "heatInputMMBtu": 1314166,
+     "co2Tons": 78097.8,
+     "noxTons": 6.92
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 3187.7,
+     "operatingHoursMaxUnit": 1737.26,
+     "hoursWithAnyOperationMaxUnit": 2112,
+     "grossLoadMWh": 126328,
+     "heatInputMMBtu": 1263233,
+     "co2Tons": 75072.4,
+     "noxTons": 6.53
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 3229.5,
+     "operatingHoursMaxUnit": 1924.63,
+     "hoursWithAnyOperationMaxUnit": 2318,
+     "grossLoadMWh": 128607,
+     "heatInputMMBtu": 1267861,
+     "co2Tons": 75346.2,
+     "noxTons": 6.03,
+     "daysAnyUnitOperated": 271
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 3736.63,
+     "operatingHoursMaxUnit": 1894.17,
+     "hoursWithAnyOperationMaxUnit": 2243,
+     "grossLoadMWh": 146310,
+     "heatInputMMBtu": 1461246,
+     "co2Tons": 86838.7,
+     "noxTons": 7.01
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "VG02",
+      "status": "(OP) Operating",
+      "netSummerMW": 40.0,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "VG03",
+      "status": "(OP) Operating",
+      "netSummerMW": 39.9,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": []
+  },
+  {
+   "plant": "Joseph J Seymour Power Project",
+   "borough": "Brooklyn",
+   "orisCode": 7910,
+   "eiaOwner": "New York Power Authority",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "1",
+    "2"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 7910,
+     "epaUnitId": "2301",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "1"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 735.34,
+       "hoursWithAnyOperation": 938,
+       "grossLoadMWh": 29624,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1407.75,
+       "hoursWithAnyOperation": 1713,
+       "grossLoadMWh": 57172,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1415.97,
+       "hoursWithAnyOperation": 1637,
+       "grossLoadMWh": 57714,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 1223.09,
+       "hoursWithAnyOperation": 1427,
+       "grossLoadMWh": 49677,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 7910,
+     "epaUnitId": "2302",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "1",
+      "2"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 716.89,
+       "hoursWithAnyOperation": 915,
+       "grossLoadMWh": 28969,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1286.65,
+       "hoursWithAnyOperation": 1548,
+       "grossLoadMWh": 52229,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1181.61,
+       "hoursWithAnyOperation": 1363,
+       "grossLoadMWh": 48086,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 1162.64,
+       "hoursWithAnyOperation": 1359,
+       "grossLoadMWh": 46966,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 1452.23,
+     "operatingHoursMaxUnit": 735.34,
+     "hoursWithAnyOperationMaxUnit": 938,
+     "grossLoadMWh": 58593,
+     "heatInputMMBtu": 589929,
+     "co2Tons": 35058.5,
+     "noxTons": 3.01
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 2694.4,
+     "operatingHoursMaxUnit": 1407.75,
+     "hoursWithAnyOperationMaxUnit": 1713,
+     "grossLoadMWh": 109401,
+     "heatInputMMBtu": 1106597,
+     "co2Tons": 65762.0,
+     "noxTons": 5.14
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 2597.58,
+     "operatingHoursMaxUnit": 1415.97,
+     "hoursWithAnyOperationMaxUnit": 1637,
+     "grossLoadMWh": 105799,
+     "heatInputMMBtu": 1062892,
+     "co2Tons": 63161.7,
+     "noxTons": 4.56,
+     "daysAnyUnitOperated": 166
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 2385.73,
+     "operatingHoursMaxUnit": 1223.09,
+     "hoursWithAnyOperationMaxUnit": 1427,
+     "grossLoadMWh": 96643,
+     "heatInputMMBtu": 971198,
+     "co2Tons": 57717.5,
+     "noxTons": 4.22
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "1",
+      "status": "(OP) Operating",
+      "netSummerMW": 40.0,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "2",
+      "status": "(OP) Operating",
+      "netSummerMW": 39.9,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": []
+  },
+  {
+   "plant": "Hell Gate",
+   "borough": "Bronx",
+   "orisCode": 7913,
+   "eiaOwner": "New York Power Authority",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "HG01",
+    "HG02"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 7913,
+     "epaUnitId": "HG01",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "HG01"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 1536.3,
+       "hoursWithAnyOperation": 1885,
+       "grossLoadMWh": 61999,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1520.87,
+       "hoursWithAnyOperation": 1832,
+       "grossLoadMWh": 61522,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1768.09,
+       "hoursWithAnyOperation": 2100,
+       "grossLoadMWh": 71721,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 1685.28,
+       "hoursWithAnyOperation": 1993,
+       "grossLoadMWh": 67977,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 7913,
+     "epaUnitId": "HG02",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "HG02"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 1148.81,
+       "hoursWithAnyOperation": 1408,
+       "grossLoadMWh": 46072,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1306.81,
+       "hoursWithAnyOperation": 1612,
+       "grossLoadMWh": 52556,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1419.38,
+       "hoursWithAnyOperation": 1693,
+       "grossLoadMWh": 57368,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 1252.97,
+       "hoursWithAnyOperation": 1492,
+       "grossLoadMWh": 50205,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 2685.11,
+     "operatingHoursMaxUnit": 1536.3,
+     "hoursWithAnyOperationMaxUnit": 1885,
+     "grossLoadMWh": 108071,
+     "heatInputMMBtu": 1123115,
+     "co2Tons": 66740.8,
+     "noxTons": 4.91
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 2827.68,
+     "operatingHoursMaxUnit": 1520.87,
+     "hoursWithAnyOperationMaxUnit": 1832,
+     "grossLoadMWh": 114079,
+     "heatInputMMBtu": 1136898,
+     "co2Tons": 67563.1,
+     "noxTons": 4.92
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 3187.47,
+     "operatingHoursMaxUnit": 1768.09,
+     "hoursWithAnyOperationMaxUnit": 2100,
+     "grossLoadMWh": 129089,
+     "heatInputMMBtu": 1291762,
+     "co2Tons": 76764.9,
+     "noxTons": 5.52,
+     "daysAnyUnitOperated": 254
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 2938.25,
+     "operatingHoursMaxUnit": 1685.28,
+     "hoursWithAnyOperationMaxUnit": 1993,
+     "grossLoadMWh": 118182,
+     "heatInputMMBtu": 1189659,
+     "co2Tons": 70698.8,
+     "noxTons": 4.78
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "HG01",
+      "status": "(OP) Operating",
+      "netSummerMW": 39.9,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "HG02",
+      "status": "(OP) Operating",
+      "netSummerMW": 39.6,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": []
+  },
+  {
+   "plant": "Harlem River Yard",
+   "borough": "Bronx",
+   "orisCode": 7914,
+   "eiaOwner": "New York Power Authority",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "HR01",
+    "HR02"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 7914,
+     "epaUnitId": "HR01",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "HR01"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 1569.66,
+       "hoursWithAnyOperation": 1918,
+       "grossLoadMWh": 62782,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1564.61,
+       "hoursWithAnyOperation": 1903,
+       "grossLoadMWh": 62978,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1686.19,
+       "hoursWithAnyOperation": 2007,
+       "grossLoadMWh": 68328,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 1633.55,
+       "hoursWithAnyOperation": 1942,
+       "grossLoadMWh": 64918,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 7914,
+     "epaUnitId": "HR02",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "HR02"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 936.88,
+       "hoursWithAnyOperation": 1155,
+       "grossLoadMWh": 37786,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1383.97,
+       "hoursWithAnyOperation": 1719,
+       "grossLoadMWh": 55891,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1393.24,
+       "hoursWithAnyOperation": 1656,
+       "grossLoadMWh": 56373,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 1653.61,
+       "hoursWithAnyOperation": 1951,
+       "grossLoadMWh": 67369,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 2506.54,
+     "operatingHoursMaxUnit": 1569.66,
+     "hoursWithAnyOperationMaxUnit": 1918,
+     "grossLoadMWh": 100568,
+     "heatInputMMBtu": 995067,
+     "co2Tons": 59136.0,
+     "noxTons": 4.94
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 2948.58,
+     "operatingHoursMaxUnit": 1564.61,
+     "hoursWithAnyOperationMaxUnit": 1903,
+     "grossLoadMWh": 118868,
+     "heatInputMMBtu": 1179899,
+     "co2Tons": 70117.4,
+     "noxTons": 6.01
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 3079.43,
+     "operatingHoursMaxUnit": 1686.19,
+     "hoursWithAnyOperationMaxUnit": 2007,
+     "grossLoadMWh": 124701,
+     "heatInputMMBtu": 1244432,
+     "co2Tons": 73956.4,
+     "noxTons": 5.87,
+     "daysAnyUnitOperated": 250
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 3287.16,
+     "operatingHoursMaxUnit": 1653.61,
+     "hoursWithAnyOperationMaxUnit": 1951,
+     "grossLoadMWh": 132287,
+     "heatInputMMBtu": 1325473,
+     "co2Tons": 78768.1,
+     "noxTons": 6.36
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "HR01",
+      "status": "(OP) Operating",
+      "netSummerMW": 39.9,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "HR02",
+      "status": "(OP) Operating",
+      "netSummerMW": 39.6,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": []
+  },
+  {
+   "plant": "Bayswater Peaking Facility LLC",
+   "borough": "Queens",
+   "orisCode": 55699,
+   "eiaOwner": "Bayswater Peaking Facility LLC",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "1"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 55699,
+     "epaUnitId": "1",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "1"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 1950.99,
+       "hoursWithAnyOperation": 2346,
+       "grossLoadMWh": 69097,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 981.38,
+       "hoursWithAnyOperation": 1229,
+       "grossLoadMWh": 47685,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 931.07,
+       "hoursWithAnyOperation": 1167,
+       "grossLoadMWh": 25184,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 383.71,
+       "hoursWithAnyOperation": 452,
+       "grossLoadMWh": 15956,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 1950.99,
+     "operatingHoursMaxUnit": 1950.99,
+     "hoursWithAnyOperationMaxUnit": 2346,
+     "grossLoadMWh": 69097,
+     "heatInputMMBtu": 770578,
+     "co2Tons": 45802.5,
+     "noxTons": 4.16
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 981.38,
+     "operatingHoursMaxUnit": 981.38,
+     "hoursWithAnyOperationMaxUnit": 1229,
+     "grossLoadMWh": 47685,
+     "heatInputMMBtu": 531577,
+     "co2Tons": 31608.0,
+     "noxTons": 2.79
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 931.07,
+     "operatingHoursMaxUnit": 931.07,
+     "hoursWithAnyOperationMaxUnit": 1167,
+     "grossLoadMWh": 25184,
+     "heatInputMMBtu": 288748,
+     "co2Tons": 17190.8,
+     "noxTons": 1.32,
+     "daysAnyUnitOperated": 153
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 383.71,
+     "operatingHoursMaxUnit": 383.71,
+     "hoursWithAnyOperationMaxUnit": 452,
+     "grossLoadMWh": 15956,
+     "heatInputMMBtu": 189568,
+     "co2Tons": 11274.7,
+     "noxTons": 0.88
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "1",
+      "status": "(OP) Operating",
+      "netSummerMW": 75.7,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": []
+  },
+  {
+   "plant": "Jamaica Bay Peaking",
+   "borough": "Queens",
+   "orisCode": 56141,
+   "eiaOwner": "Jamaica Bay Peaking Facility, LLC",
+   "covered": true,
+   "match": "no EPA units under ORIS 56141; EPA reports this plant's generator as unit 2 at ORIS 55699 (Bayswater Peaking Facility), whose listed owner/operator is Jamaica Bay Peaking Facility, LLC and whose generator ID matches",
+   "units": [
+    "2"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 55699,
+     "epaUnitId": "2",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "2"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Diesel Oil",
+     "secondaryFuel": "Pipeline Natural Gas",
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 1064.81,
+       "hoursWithAnyOperation": 1362,
+       "grossLoadMWh": 54439,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 602.08,
+       "hoursWithAnyOperation": 776,
+       "grossLoadMWh": 26186,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 550.1,
+       "hoursWithAnyOperation": 639,
+       "grossLoadMWh": 23735,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 340.54,
+       "hoursWithAnyOperation": 396,
+       "grossLoadMWh": 14959,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 1064.81,
+     "operatingHoursMaxUnit": 1064.81,
+     "hoursWithAnyOperationMaxUnit": 1362,
+     "grossLoadMWh": 54439,
+     "heatInputMMBtu": 593639,
+     "co2Tons": 37356.0,
+     "noxTons": 4.1
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 602.08,
+     "operatingHoursMaxUnit": 602.08,
+     "hoursWithAnyOperationMaxUnit": 776,
+     "grossLoadMWh": 26186,
+     "heatInputMMBtu": 286704,
+     "co2Tons": 17454.6,
+     "noxTons": 2.06
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 550.1,
+     "operatingHoursMaxUnit": 550.1,
+     "hoursWithAnyOperationMaxUnit": 639,
+     "grossLoadMWh": 23735,
+     "heatInputMMBtu": 268841,
+     "co2Tons": 21813.1,
+     "noxTons": 3.15,
+     "daysAnyUnitOperated": 74
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 340.54,
+     "operatingHoursMaxUnit": 340.54,
+     "hoursWithAnyOperationMaxUnit": 396,
+     "grossLoadMWh": 14959,
+     "heatInputMMBtu": 167533,
+     "co2Tons": 13593.7,
+     "noxTons": 1.92
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "2",
+      "status": "(OP) Operating",
+      "netSummerMW": 47.3,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": []
+  },
+  {
+   "plant": "North 1st",
+   "borough": "Brooklyn",
+   "orisCode": 7915,
+   "eiaOwner": "New York Power Authority",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "N01"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 7915,
+     "epaUnitId": "NO1",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "N01"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 777.33,
+       "hoursWithAnyOperation": 989,
+       "grossLoadMWh": 34992,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1616.71,
+       "hoursWithAnyOperation": 1980,
+       "grossLoadMWh": 72639,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 2163.26,
+       "hoursWithAnyOperation": 2466,
+       "grossLoadMWh": 98448,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 874.91,
+       "hoursWithAnyOperation": 1058,
+       "grossLoadMWh": 38441,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 777.33,
+     "operatingHoursMaxUnit": 777.33,
+     "hoursWithAnyOperationMaxUnit": 989,
+     "grossLoadMWh": 34992,
+     "heatInputMMBtu": 346737,
+     "co2Tons": 20605.7,
+     "noxTons": 1.8
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 1616.71,
+     "operatingHoursMaxUnit": 1616.71,
+     "hoursWithAnyOperationMaxUnit": 1980,
+     "grossLoadMWh": 72639,
+     "heatInputMMBtu": 715112,
+     "co2Tons": 42499.0,
+     "noxTons": 3.31
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 2163.26,
+     "operatingHoursMaxUnit": 2163.26,
+     "hoursWithAnyOperationMaxUnit": 2466,
+     "grossLoadMWh": 98448,
+     "heatInputMMBtu": 972928,
+     "co2Tons": 57820.0,
+     "noxTons": 4.2,
+     "daysAnyUnitOperated": 210
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 874.91,
+     "operatingHoursMaxUnit": 874.91,
+     "hoursWithAnyOperationMaxUnit": 1058,
+     "grossLoadMWh": 38441,
+     "heatInputMMBtu": 386193,
+     "co2Tons": 22951.3,
+     "noxTons": 1.72
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "N01",
+      "status": "(OP) Operating",
+      "netSummerMW": 46.0,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": []
+  },
+  {
+   "plant": "Pouch",
+   "borough": "Staten Island",
+   "orisCode": 8053,
+   "eiaOwner": "New York Power Authority",
+   "covered": true,
+   "match": "generator IDs differ between EPA and EIA, so all combustion-turbine units at the same ORIS code are used (EIA: N01; EPA: PT01)",
+   "units": [
+    "N01"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 8053,
+     "epaUnitId": "PT01",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "PT01"
+     ],
+     "programs": "ARP, CSNOX, CSOSG2E, CSSO2G1, RGGI",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 1016.87,
+       "hoursWithAnyOperation": 1263,
+       "grossLoadMWh": 46281,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 1820.35,
+       "hoursWithAnyOperation": 2173,
+       "grossLoadMWh": 81771,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 1458.56,
+       "hoursWithAnyOperation": 1688,
+       "grossLoadMWh": 65774,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 641.87,
+       "hoursWithAnyOperation": 785,
+       "grossLoadMWh": 28527,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 1016.87,
+     "operatingHoursMaxUnit": 1016.87,
+     "hoursWithAnyOperationMaxUnit": 1263,
+     "grossLoadMWh": 46281,
+     "heatInputMMBtu": 458332,
+     "co2Tons": 27238.2,
+     "noxTons": 2.51
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 1820.35,
+     "operatingHoursMaxUnit": 1820.35,
+     "hoursWithAnyOperationMaxUnit": 2173,
+     "grossLoadMWh": 81771,
+     "heatInputMMBtu": 801031,
+     "co2Tons": 47603.9,
+     "noxTons": 4.01
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 1458.56,
+     "operatingHoursMaxUnit": 1458.56,
+     "hoursWithAnyOperationMaxUnit": 1688,
+     "grossLoadMWh": 65774,
+     "heatInputMMBtu": 635925,
+     "co2Tons": 37793.1,
+     "noxTons": 3.22,
+     "daysAnyUnitOperated": 152
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 641.87,
+     "operatingHoursMaxUnit": 641.87,
+     "hoursWithAnyOperationMaxUnit": 785,
+     "grossLoadMWh": 28527,
+     "heatInputMMBtu": 276492,
+     "co2Tons": 16431.2,
+     "noxTons": 1.56
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "N01",
+      "status": "(OP) Operating",
+      "netSummerMW": 44.7,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": null,
+   "notes": []
+  },
+  {
+   "plant": "74th Street",
+   "borough": "Manhattan",
+   "orisCode": 2504,
+   "eiaOwner": "Consolidated Edison Co-NY Inc",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "GT1",
+    "GT2"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 2504,
+     "epaUnitId": "CT0001",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT1"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Other Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 5.0,
+       "hoursWithAnyOperation": 5,
+       "grossLoadMWh": 70,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 2.0,
+       "hoursWithAnyOperation": 2,
+       "grossLoadMWh": 28,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 24.0,
+       "hoursWithAnyOperation": 24,
+       "grossLoadMWh": 336,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    },
+    {
+     "epaFacilityId": 2504,
+     "epaUnitId": "CT0002",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT2"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Other Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 10.0,
+       "hoursWithAnyOperation": 10,
+       "grossLoadMWh": 140,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 7.0,
+       "hoursWithAnyOperation": 7,
+       "grossLoadMWh": 98,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 18.0,
+       "hoursWithAnyOperation": 18,
+       "grossLoadMWh": 252,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 15.0,
+     "operatingHoursMaxUnit": 10.0,
+     "hoursWithAnyOperationMaxUnit": 10,
+     "grossLoadMWh": 210,
+     "heatInputMMBtu": 3345,
+     "co2Tons": 271.5,
+     "noxTons": 2.01
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 2.0,
+     "operatingHoursMaxUnit": 2.0,
+     "hoursWithAnyOperationMaxUnit": 2,
+     "grossLoadMWh": 28,
+     "heatInputMMBtu": 446,
+     "co2Tons": 36.2,
+     "noxTons": 0.27
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 7.0,
+     "operatingHoursMaxUnit": 7.0,
+     "hoursWithAnyOperationMaxUnit": 7,
+     "grossLoadMWh": 98,
+     "heatInputMMBtu": 1561,
+     "co2Tons": 126.7,
+     "noxTons": 0.94,
+     "daysAnyUnitOperated": 2
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 2,
+     "unitsThatRan": 2,
+     "operatingHoursAllUnits": 42.0,
+     "operatingHoursMaxUnit": 24.0,
+     "hoursWithAnyOperationMaxUnit": 24,
+     "grossLoadMWh": 588,
+     "heatInputMMBtu": 9366,
+     "co2Tons": 760.2,
+     "noxTons": 5.62
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "GT1",
+      "status": "(OP) Operating",
+      "netSummerMW": 18.5,
+      "plannedRetirement": null
+     },
+     {
+      "generatorId": "GT2",
+      "status": "(OP) Operating",
+      "netSummerMW": 19.3,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": {
+    "summary": "Listed in NYISO's table of status changes due to the DEC Peaker Rule (74 St. GT 1 & 2, status date May 1, 2023), with the note that the units are no longer dispatched by NYISO and serve local reliability only.",
+    "sources": [
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2026 Quarter 1, Figure 2",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9",
+      "quote": "74 St. GT 1 & 2 (10) ... 05/01/2023; note 10: Unit no longer subject to NYISO dispatch and is used for local reliability only."
+     }
+    ]
+   },
+   "notes": []
+  },
+  {
+   "plant": "Astoria Generating Station",
+   "borough": "Queens",
+   "orisCode": 8906,
+   "eiaOwner": "U S Power Generating Company LLC",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "1"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 8906,
+     "epaUnitId": "CT0001",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "1"
+     ],
+     "programs": "RGGI, SIPNOX",
+     "primaryFuel": "Pipeline Natural Gas",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 74.76,
+       "hoursWithAnyOperation": 102,
+       "grossLoadMWh": 867,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2024": {
+       "operatingHours": 41.7,
+       "hoursWithAnyOperation": 63,
+       "grossLoadMWh": 624,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2025": {
+       "operatingHours": 2.9,
+       "hoursWithAnyOperation": 6,
+       "grossLoadMWh": 44,
+       "quarters": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "2026": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        1,
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 74.76,
+     "operatingHoursMaxUnit": 74.76,
+     "hoursWithAnyOperationMaxUnit": 102,
+     "grossLoadMWh": 867,
+     "heatInputMMBtu": 13467,
+     "co2Tons": 794.0,
+     "noxTons": 2.5
+    },
+    "2024": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 41.7,
+     "operatingHoursMaxUnit": 41.7,
+     "hoursWithAnyOperationMaxUnit": 63,
+     "grossLoadMWh": 624,
+     "heatInputMMBtu": 9778,
+     "co2Tons": 576.1,
+     "noxTons": 1.75
+    },
+    "2025": {
+     "quartersReported": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 2.9,
+     "operatingHoursMaxUnit": 2.9,
+     "hoursWithAnyOperationMaxUnit": 6,
+     "grossLoadMWh": 44,
+     "heatInputMMBtu": 588,
+     "co2Tons": 34.8,
+     "noxTons": 0.1,
+     "daysAnyUnitOperated": 2
+    },
+    "2026": {
+     "quartersReported": [
+      1,
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 0,
+     "operatingHoursAllUnits": 0.0,
+     "operatingHoursMaxUnit": 0.0,
+     "hoursWithAnyOperationMaxUnit": 0,
+     "grossLoadMWh": 0,
+     "heatInputMMBtu": 0,
+     "co2Tons": 0,
+     "noxTons": 0
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "1",
+      "status": "(OS) Out of service and NOT expected to return to service in next calendar year",
+      "netSummerMW": 15.7,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": [
+     "1"
+    ]
+   },
+   "peakerRule": {
+    "summary": "Listed in NYISO's table of status changes due to the DEC Peaker Rule as retired May 1, 2025 (Astoria GT 01), although EIA's 860M still carries the generator as out of service rather than retired.",
+    "sources": [
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2026 Quarter 1, Figure 2",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9",
+      "quote": "Astoria GT 01 ... 5/1/2025 (R)"
+     }
+    ]
+   },
+   "notes": []
+  },
+  {
+   "plant": "59th Street",
+   "borough": "Manhattan",
+   "orisCode": 2503,
+   "eiaOwner": "Consolidated Edison Co-NY Inc",
+   "covered": true,
+   "match": "EPA unit lists one of the plant's EIA generator IDs, same ORIS code",
+   "units": [
+    "GT1"
+   ],
+   "epaUnits": [
+    {
+     "epaFacilityId": 2503,
+     "epaUnitId": "CT0001",
+     "unitType": "Combustion turbine",
+     "eiaGenerators": [
+      "GT1"
+     ],
+     "programs": "SIPNOX",
+     "primaryFuel": "Other Oil",
+     "secondaryFuel": null,
+     "epaOperatingStatus": "Operating",
+     "inEpaInventoryYears": [
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "byYear": {
+      "2023": {
+       "operatingHours": 48.0,
+       "hoursWithAnyOperation": 48,
+       "grossLoadMWh": 672,
+       "quarters": [
+        2,
+        3
+       ]
+      },
+      "2024": {
+       "operatingHours": 29.0,
+       "hoursWithAnyOperation": 29,
+       "grossLoadMWh": 406,
+       "quarters": [
+        2,
+        3
+       ]
+      },
+      "2025": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        2,
+        3
+       ]
+      },
+      "2026": {
+       "operatingHours": 0.0,
+       "hoursWithAnyOperation": 0,
+       "grossLoadMWh": 0,
+       "quarters": [
+        2,
+        3
+       ]
+      }
+     }
+    }
+   ],
+   "years": {
+    "2023": {
+     "quartersReported": [
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 48.0,
+     "operatingHoursMaxUnit": 48.0,
+     "hoursWithAnyOperationMaxUnit": 48,
+     "grossLoadMWh": 672,
+     "heatInputMMBtu": 10560,
+     "co2Tons": null,
+     "noxTons": 6.34
+    },
+    "2024": {
+     "quartersReported": [
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 1,
+     "operatingHoursAllUnits": 29.0,
+     "operatingHoursMaxUnit": 29.0,
+     "hoursWithAnyOperationMaxUnit": 29,
+     "grossLoadMWh": 406,
+     "heatInputMMBtu": 6380,
+     "co2Tons": null,
+     "noxTons": 3.83
+    },
+    "2025": {
+     "quartersReported": [
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 0,
+     "operatingHoursAllUnits": 0.0,
+     "operatingHoursMaxUnit": 0.0,
+     "hoursWithAnyOperationMaxUnit": 0,
+     "grossLoadMWh": 0,
+     "heatInputMMBtu": 0,
+     "co2Tons": 0,
+     "noxTons": 0,
+     "daysAnyUnitOperated": 0
+    },
+    "2026": {
+     "quartersReported": [
+      2,
+      3
+     ],
+     "unitsReporting": 1,
+     "unitsThatRan": 0,
+     "operatingHoursAllUnits": 0.0,
+     "operatingHoursMaxUnit": 0.0,
+     "hoursWithAnyOperationMaxUnit": 0,
+     "grossLoadMWh": 0,
+     "heatInputMMBtu": 0,
+     "co2Tons": 0,
+     "noxTons": 0
+    }
+   },
+   "ytdThrough": "2026-Q3",
+   "retirement": {
+    "eia860mFile": "september_generator2026.xlsx",
+    "eia860mUrl": "https://www.eia.gov/electricity/data/eia860m/xls/september_generator2026.xlsx",
+    "generators": [
+     {
+      "generatorId": "GT1",
+      "status": "(OP) Operating",
+      "netSummerMW": 14.5,
+      "plannedRetirement": null
+     }
+    ],
+    "plannedRetirements": [],
+    "retiredInLatestFile": [],
+    "outOfService": []
+   },
+   "peakerRule": {
+    "summary": "Listed in NYISO's table of status changes due to the DEC Peaker Rule (59 St. GT 1, status date May 1, 2025), with the note that the unit is no longer dispatched by NYISO and serves local reliability only.",
+    "sources": [
+     {
+      "source": "NYISO, Short-Term Assessment of Reliability: 2026 Quarter 1, Figure 2",
+      "url": "https://www.nyiso.com/documents/20142/39103148/2026-Q1-STAR-Report-Final.pdf/0f53b499-360c-29a8-09f7-6fd34a05bcf9",
+      "quote": "59 St. GT 1 (10) ... 05/01/2025; note 10: Unit no longer subject to NYISO dispatch and is used for local reliability only."
+     }
+    ]
+   },
+   "notes": [
+    "EPA has records only for quarters 2 and 3 in every year: the unit reports only for the May-September ozone season (EPA programs: SIPNOX), so any running outside that window is not counted.",
+    "EPA reports no value for co2Tons in some years although the unit operated; those fields are null and left out of the totals."
+   ]
+  }
+ ]
+}

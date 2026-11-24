@@ -27,6 +27,8 @@ jobs:
         run: python3 build-daily-load.py
       - name: Build baseline
         run: node build-baseline.mjs
+      - name: Build a year of daily price, mix, carbon and imports
+        run: python3 build-daily-grid.py
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
